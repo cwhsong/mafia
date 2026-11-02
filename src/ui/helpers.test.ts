@@ -1,0 +1,54 @@
+import { describe, it, expect } from 'vitest'
+import {
+  countRoles, withRoleCount, fillWithVillagers, phaseLabel, teamOf, teamLabel, joinLink,
+} from './helpers'
+
+describe('role picker helpers', () => {
+  it('counts roles', () => {
+    expect(countRoles(['villager', 'medic', 'villager'])).toEqual({ villager: 2, medic: 1 })
+  })
+
+  it('changes one count and keeps role-picker order', () => {
+    expect(withRoleCount(['medic', 'villager'], 'mafioso', 2))
+      .toEqual(['villager', 'mafioso', 'mafioso', 'medic'])
+  })
+
+  it('removes a role when its count reaches zero, and never goes negative', () => {
+    expect(withRoleCount(['villager', 'medic'], 'medic', 0)).toEqual(['villager'])
+    expect(withRoleCount(['villager'], 'medic', -1)).toEqual(['villager'])
+  })
+
+  it('fills the remaining slots with Villagers', () => {
+    expect(fillWithVillagers(['mafioso', 'medic'], 5))
+      .toEqual(['villager', 'villager', 'villager', 'mafioso', 'medic'])
+  })
+
+  it('leaves a full or over-full list alone', () => {
+    expect(fillWithVillagers(['mafioso', 'medic'], 2)).toEqual(['mafioso', 'medic'])
+    expect(fillWithVillagers(['mafioso', 'medic'], 1)).toEqual(['mafioso', 'medic'])
+  })
+})
+
+describe('labels', () => {
+  it('names each phase with its round', () => {
+    expect(phaseLabel('lobby', 0)).toBe('Lobby')
+    expect(phaseLabel('day', 1)).toBe('Day 1')
+    expect(phaseLabel('night', 1)).toBe('Night 1')
+    expect(phaseLabel('dawn', 1)).toBe('Dawn 1')
+    expect(phaseLabel('vote', 2)).toBe('Day 2 · Vote')
+    expect(phaseLabel('ended', 3)).toBe('Game over')
+  })
+
+  it('finds a role’s team', () => {
+    expect(teamOf('mafioso')).toBe('mafia')
+    expect(teamOf('medic')).toBe('town')
+    expect(teamOf(null)).toBeNull()
+    expect(teamOf('nope')).toBeNull()
+    expect(teamLabel('neutral')).toBe('Neutral')
+  })
+
+  it('builds a join link', () => {
+    expect(joinLink('KXQRTZ', { origin: 'https://cwhsong.github.io', pathname: '/mafia/' }))
+      .toBe('https://cwhsong.github.io/mafia/#KXQRTZ')
+  })
+})
