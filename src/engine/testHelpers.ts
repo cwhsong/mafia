@@ -4,6 +4,8 @@ import { EngineError, type EngineErrorCode } from './errors'
 import type { GameState } from './types'
 import { createGame, addPlayer } from './setup'
 
+import { getRole } from '../roles'
+
 // Passes only if fn throws an EngineError with exactly this code.
 export function expectEngineError(fn: () => unknown, code: EngineErrorCode): void {
   try {
@@ -35,5 +37,34 @@ export function gameWithRoles(roles: string[]): GameState {
     round: 1,
     roleSlots: [...roles],
     players: lobby.players.map((p, i) => ({ ...p, roleId: roles[i] })),
+  }
+}
+
+// A dealt game on Day 1 with a named cast, e.g.
+//   setupGame({ mafioso: ['Ana', 'Ben'], medic: 'Cal', villager: ['Dee', 'Eve'] })
+// Player ids are lowercase names ('ana', 'ben'), so tests can refer to them directly.
+export function setupGame(cast: Record<string, string | string[]>, seed = 1): GameState {
+  const roles: string[] = []
+  const names: string[] = []
+
+  for (const [roleId, who] of Object.entries(cast)) {
+    getRole(roleId) // throws on a typo like 'medik'
+    for (const name of Array.isArray(who) ? who : [who]) {
+      roles.push(roleId)
+      names.push(name)
+    }
+  }
+
+  let state = createGame('host', seed)
+  for (const name of names) {
+    state = addPlayer(state, name.toLowerCase(), name)
+  }
+
+  return {
+    ...state,
+    phase: 'day',
+    round: 1,
+    roleSlots: roles,
+    players: state.players.map((p, i) => ({ ...p, roleId: roles[i] })),
   }
 }
