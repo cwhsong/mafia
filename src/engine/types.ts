@@ -2,7 +2,8 @@
 
 export type Team = 'town' | 'mafia' | 'neutral'
 
-export type Phase = 'lobby' | 'night' | 'day' | 'vote' | 'ended'
+//export type Phase = 'lobby' | 'night' | 'day' | 'vote' | 'ended'
+export type Phase = 'lobby' | 'day' | 'vote' | 'night' | 'dawn' | 'ended'
 
 export type DeathCause = 'vote' | 'night' | 'host'
 

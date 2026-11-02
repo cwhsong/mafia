@@ -31,13 +31,13 @@ describe('dealRoles', () => {
       .toEqual(before.players.map((p) => [p.id, p.name, p.seat]))
   })
 
-  it('starts Night 1 and logs it', () => {
+  it('starts Day 1 and logs it', () => {
     const dealt = dealRoles(readyGame())
-    expect(dealt.phase).toBe('night')
+    expect(dealt.phase).toBe('day')
     expect(dealt.round).toBe(1)
     expect(dealt.log).toEqual([
       { type: 'dealt' },
-      { type: 'phase', phase: 'night', round: 1 },
+      { type: 'phase', phase: 'day', round: 1 },
     ])
   })
 

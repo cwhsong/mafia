@@ -22,12 +22,12 @@ export function dealRoles(state: GameState): GameState {
   return {
     ...state,
     players,
-    phase: 'night',
+    phase: 'day',
     round: 1,
     log: [
       ...state.log,
       { type: 'dealt' },
-      { type: 'phase', phase: 'night', round: 1 },
+      { type: 'phase', phase: 'day', round: 1 },
     ],
   }
 }
