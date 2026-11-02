@@ -5,7 +5,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <span aria-hidden="true">🕵️</span>
-        <span>Mafia</span>
+        <span>Mafia: Daybreak</span>
       </header>
 
       <main className="app-main">
@@ -13,7 +13,7 @@ export default function App() {
         <div className="card stack">
           <h1>Play Mafia in person</h1>
           <p className="muted">
-            Phones deal the roles and handle the night. The narrator tells the story.
+            Phones handle the roles and the night. The narrator handles the story. 
           </p>
           <button className="btn btn-primary" disabled>
             Host a game
