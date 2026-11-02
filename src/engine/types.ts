@@ -69,4 +69,4 @@ export type Command =
   | { type: 'setRoleSlots'; slots: string[] }
   | { type: 'deal' }
   | { type: 'advance' }
-  | { type: 'eliminate'; playerId: string; cause: DeathCause }
+  | { type: 'eliminate'; playerIds: string[]; cause: DeathCause }

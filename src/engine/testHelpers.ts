@@ -24,3 +24,16 @@ export function lobbyWith(count: number, seed = 1): GameState {
   }
   return state
 }
+
+// A dealt game on Day 1 with chosen roles in seat order: id0 gets roles[0], etc.
+// Skips validation on purpose, so tests can build any situation.
+export function gameWithRoles(roles: string[]): GameState {
+  const lobby = lobbyWith(roles.length)
+  return {
+    ...lobby,
+    phase: 'day',
+    round: 1,
+    roleSlots: [...roles],
+    players: lobby.players.map((p, i) => ({ ...p, roleId: roles[i] })),
+  }
+}

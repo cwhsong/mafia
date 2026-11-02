@@ -9,7 +9,8 @@ export type EngineErrorCode =
   | 'unknown-player'
   | 'unknown-role'
   | 'role-unavailable'
-    | 'invalid-setup'
+  | 'invalid-setup'
+  | 'already-dead'
 
 export class EngineError extends Error {
   code: EngineErrorCode
