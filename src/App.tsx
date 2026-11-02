@@ -3,6 +3,7 @@ import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import './App.css'
+import { firebaseConfig } from './transport/firebaseConfig'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -115,6 +116,10 @@ function App() {
 
       <div className="ticks"></div>
       <section id="spacer"></section>
+
+      <p style={{ opacity: 0.5, fontSize: 12 }}>
+        {import.meta.env.MODE} · {firebaseConfig.projectId}
+      </p>
     </>
   )
 }
