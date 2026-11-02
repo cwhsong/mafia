@@ -5,3 +5,11 @@ export { createGame, validateSetup, MIN_PLAYERS, MAX_PLAYERS } from './setup'
 export { checkWin } from './win'
 export { randomSeed } from './rng'
 export { EngineError, type EngineErrorCode } from './errors'
+export {
+  playerView,
+  narratorView,
+  type PlayerView,
+  type NarratorView,
+  type PublicPlayer,
+  type Teammate,
+} from './views'
