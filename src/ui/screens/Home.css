@@ -1,0 +1,58 @@
+.home {
+  flex: 1;
+  display: grid;
+  gap: var(--space-7);
+  align-items: center;
+  padding-block: var(--space-5);
+}
+
+.home-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 520px;
+}
+
+.home-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(64px, 13vw, 132px);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'opsz' 144;
+  padding-bottom: 0.12em;
+}
+
+.home-title-line {
+  display: block;
+}
+
+.home-title-accent {
+  color: var(--dawn);
+}
+
+.home-lede {
+  font-size: 19px;
+  color: var(--muted);
+  max-width: 34ch;
+}
+
+.home-panel {
+  margin-top: var(--space-3);
+}
+
+/* Cards only appear when there's room beside the panel */
+.home-art {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .home {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: clamp(64px, 8vw, 120px); 
+  }
+
+  .home-art {
+    display: block;
+  }
+}
