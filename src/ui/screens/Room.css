@@ -209,3 +209,38 @@
   font-size: 20px;
   font-weight: 600;
 }
+
+/* Narrator: selectable player names */
+.pick {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  margin-left: calc(-1 * var(--space-3));
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick.is-picked {
+  border-color: var(--dawn);
+  background: rgba(233, 162, 95, 0.1);
+}
+
+.pick:disabled {
+  cursor: default;
+}
+
+.pick:focus-visible {
+  outline: 3px solid var(--dawn);
+  outline-offset: 2px;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #1a0705;
+}

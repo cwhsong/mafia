@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   countRoles, withRoleCount, fillWithVillagers, phaseLabel, teamOf, teamLabel, joinLink,
+  nextPhaseLabel, causeForPhase, winnerLabel,
 } from './helpers'
 
 describe('role picker helpers', () => {
@@ -50,5 +51,29 @@ describe('labels', () => {
   it('builds a join link', () => {
     expect(joinLink('KXQRTZ', { origin: 'https://cwhsong.github.io', pathname: '/mafia/' }))
       .toBe('https://cwhsong.github.io/mafia/#KXQRTZ')
+  })
+})
+
+describe('narrator controls', () => {
+  it('labels the next-phase button for every step of the cycle', () => {
+    expect(nextPhaseLabel('day', 1)).toBe('Start Night 1')
+    expect(nextPhaseLabel('night', 1)).toBe('End the night (Dawn 1)')
+    expect(nextPhaseLabel('dawn', 1)).toBe('Start Day 2')
+    expect(nextPhaseLabel('day', 2)).toBe('Start the Day 2 vote')
+    expect(nextPhaseLabel('vote', 2)).toBe('Start Night 2')
+    expect(nextPhaseLabel('lobby', 0)).toBeNull()
+    expect(nextPhaseLabel('ended', 3)).toBeNull()
+  })
+
+  it('records eliminations with the right cause', () => {
+    expect(causeForPhase('vote')).toBe('vote')
+    expect(causeForPhase('night')).toBe('night')
+    expect(causeForPhase('dawn')).toBe('night')
+    expect(causeForPhase('day')).toBe('host')
+  })
+
+  it('names the winner', () => {
+    expect(winnerLabel('town')).toBe('The Town wins')
+    expect(winnerLabel('mafia')).toBe('The Mafia win')
   })
 })

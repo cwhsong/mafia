@@ -1,4 +1,4 @@
-import type { Phase, Team } from '../engine'
+import type { DeathCause, Phase, Team } from '../engine'
 import { AVAILABLE_ROLES, ROLES } from '../roles'
 
 // ---------- Role picker ----------
@@ -40,6 +40,33 @@ export function phaseLabel(phase: Phase, round: number): string {
     case 'ended':
       return 'Game over'
   }
+}
+
+// Text for the narrator's "next phase" button.
+export function nextPhaseLabel(phase: Phase, round: number): string | null {
+  switch (phase) {
+    case 'day':
+      return round === 1 ? 'Start Night 1' : `Start the Day ${round} vote`
+    case 'vote':
+      return `Start Night ${round}`
+    case 'night':
+      return `End the night (Dawn ${round})`
+    case 'dawn':
+      return `Start Day ${round + 1}`
+    default:
+      return null
+  }
+}
+
+// How an elimination is recorded, based on when the narrator makes it.
+export function causeForPhase(phase: Phase): DeathCause {
+  if (phase === 'vote') return 'vote'
+  if (phase === 'night' || phase === 'dawn') return 'night'
+  return 'host'
+}
+
+export function winnerLabel(team: Team): string {
+  return team === 'town' ? 'The Town wins' : team === 'mafia' ? 'The Mafia win' : 'A neutral player wins'
 }
 
 export function teamOf(roleId: string | null | undefined): Team | null {
