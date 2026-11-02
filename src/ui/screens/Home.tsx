@@ -1,11 +1,17 @@
 import { useState, type FormEvent } from 'react'
 import { CardFan } from '../components/CardFan'
 import { codeFromHash, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../../transport/roomCode'
+import type { RoomSession, SessionState } from '../roomSession'
 import './Home.css'
 
 type Mode = 'host' | 'join'
 
-export function Home() {
+interface HomeProps {
+  session: RoomSession
+  state: SessionState
+}
+
+export function Home({ session, state }: HomeProps) {
   // A join link like …/mafia/#KXQRTZ opens straight on the Join tab with the code filled in
   const linkedCode = codeFromHash(window.location.hash)
 
@@ -16,11 +22,20 @@ export function Home() {
   const cleanCode = normalizeRoomCode(code)
   const codeTyped = cleanCode.length >= CODE_LENGTH
   const codeOk = isValidRoomCode(cleanCode)
-  const canSubmit = name.trim() !== '' && (mode === 'host' || codeOk)
+  const busy = state.status === 'connecting'
+  const failure = state.status === 'failed' ? state.message : null
+  const canSubmit = name.trim() !== '' && (mode === 'host' || codeOk) && !busy
+
+  // Typing again clears an old "couldn't join" message
+  function clearFailure() {
+    if (failure) session.dismissError()
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    // Wired up in Step 2.6
+    if (!canSubmit) return
+    if (mode === 'host') void session.host(name.trim())
+    else void session.join(cleanCode, name.trim())
   }
 
   return (
@@ -33,7 +48,6 @@ export function Home() {
         </h1>
         <p className="home-lede">
           Phones run the night. Narrator runs the story.
-          
         </p>
 
         <form className="panel stack home-panel" onSubmit={handleSubmit}>
@@ -43,7 +57,10 @@ export function Home() {
               role="tab"
               className="tab"
               aria-selected={mode === 'host'}
-              onClick={() => setMode('host')}
+              onClick={() => {
+                setMode('host')
+                clearFailure()
+              }}
             >
               Host a game
             </button>
@@ -52,7 +69,10 @@ export function Home() {
               role="tab"
               className="tab"
               aria-selected={mode === 'join'}
-              onClick={() => setMode('join')}
+              onClick={() => {
+                setMode('join')
+                clearFailure()
+              }}
             >
               Join a game
             </button>
@@ -70,7 +90,10 @@ export function Home() {
               <input
                 className="input input-code"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => {
+                  setCode(e.target.value)
+                  clearFailure()
+                }}
                 placeholder="ABCDEF"
                 autoCapitalize="characters"
                 autoComplete="off"
@@ -88,7 +111,10 @@ export function Home() {
             <input
               className="input"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                clearFailure()
+              }}
               placeholder="e.g. Chisp"
               autoComplete="nickname"
               maxLength={24}
@@ -96,8 +122,16 @@ export function Home() {
           </label>
 
           <button className="btn btn-primary" type="submit" disabled={!canSubmit}>
-            {mode === 'host' ? 'Host a game' : 'Join game'}
+            {busy
+              ? mode === 'host' ? 'Opening room…' : 'Joining…'
+              : mode === 'host' ? 'Host a game' : 'Join game'}
           </button>
+
+          {failure && (
+            <p className="error" role="alert">
+              {failure}
+            </p>
+          )}
         </form>
       </div>
 

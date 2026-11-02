@@ -101,3 +101,5 @@ export function createRoomSession(transport: RoomTransport, playerId: string): R
     },
   }
 }
+
+export type InRoomState = Extract<SessionState, { status: 'in-room' }>
