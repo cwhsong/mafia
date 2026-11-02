@@ -11,6 +11,7 @@ export type EngineErrorCode =
   | 'role-unavailable'
   | 'invalid-setup'
   | 'already-dead'
+  | 'unknown-command'
 
 export class EngineError extends Error {
   code: EngineErrorCode

@@ -1,0 +1,35 @@
+import type { Command, GameState } from './types'
+import { EngineError } from './errors'
+import { addPlayer, removePlayer, setRoleSlots } from './setup'
+import { dealRoles } from './deal'
+import { advancePhase } from './phases'
+import { eliminate } from './eliminate'
+
+// The one way to change a game: give it the current state and a command,
+// get back the new state.
+export function reduce(state: GameState, command: Command): GameState {
+  switch (command.type) {
+    case 'addPlayer':
+      return addPlayer(state, command.id, command.name)
+    case 'removePlayer':
+      return removePlayer(state, command.id)
+    case 'setRoleSlots':
+      return setRoleSlots(state, command.slots)
+    case 'deal':
+      return dealRoles(state)
+    case 'advance':
+      return advancePhase(state)
+    case 'eliminate':
+      return eliminate(state, command.playerIds, command.cause)
+    default: {
+      // If every command type is handled above, TypeScript knows this line can't be reached.
+      const unhandled: never = command
+      throw new EngineError('unknown-command', `Unknown command: ${JSON.stringify(unhandled)}`)
+    }
+  }
+}
+
+// Applies a list of commands in order. Handy for tests and, later, replays.
+export function applyCommands(state: GameState, commands: readonly Command[]): GameState {
+  return commands.reduce(reduce, state)
+}
