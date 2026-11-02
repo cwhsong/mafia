@@ -3,16 +3,7 @@ import type { GameState } from './types'
 import {
   createGame, addPlayer, removePlayer, setRoleSlots, validateSetup, MAX_PLAYERS,
 } from './setup'
-import { expectEngineError } from './testHelpers'
-
-// Builds a lobby with players named P0, P1, P2…
-function lobbyWith(count: number): GameState {
-  let state = createGame('host', 1)
-  for (let i = 0; i < count; i++) {
-    state = addPlayer(state, `id${i}`, `P${i}`)
-  }
-  return state
-}
+import { expectEngineError, lobbyWith } from './testHelpers'
 
 describe('createGame', () => {
   it('starts an empty lobby', () => {
