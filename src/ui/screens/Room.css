@@ -1,0 +1,211 @@
+/* Shared styles for every in-room screen (lobby, role card, narrator) */
+
+.room {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.room-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.wordmark span {
+  color: var(--dawn);
+}
+
+.code-chip {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.room-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 34px;
+  letter-spacing: -0.01em;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Big room code for the narrator to read out */
+.big-code {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 12vw, 56px);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--dawn);
+  line-height: 1;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.btn-small {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  font-size: 15px;
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+/* Lists of players or roles */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list > li:last-child {
+  border-bottom: 0;
+}
+
+.is-dead {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.you {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Team colours as text */
+.team-town { color: var(--town); }
+.team-mafia { color: var(--mafia); }
+.team-neutral { color: var(--neutral); }
+
+.team-tag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Problems that block dealing */
+.problems {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--danger);
+  font-size: 15px;
+}
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 15px;
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--muted);
+}
+
+.waiting::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dawn);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting::before { animation: none; }
+}
+
+/* Role picker rows */
+.list > li.role-row {
+  align-items: flex-start;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.stepper-count {
+  min-width: 2ch;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
