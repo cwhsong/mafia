@@ -3,7 +3,7 @@ import { getPlayerId } from '../transport/identity'
 import { createRoomSession } from './roomSession'
 
 // The one room session for this tab.
-export const appSession = createRoomSession(createLocalTransport(), getPlayerId())
+export const appSession = createRoomSession(createLocalTransport({ playerId: getPlayerId() }))
 
 // ---------- Rejoin after a refresh ----------
 // A player who refreshes the page drops back to idle. We remember which room they

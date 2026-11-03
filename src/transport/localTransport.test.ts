@@ -23,33 +23,36 @@ function watch(connection: RoomConnection) {
   }
 }
 
+// Each "device" gets its own transport (its own identity), all on one shared set of channels.
 function setup() {
-  const transport = createLocalTransport({
-    channels: createMemoryChannels(),
-    joinTimeoutMs: 50,
-    newSeed: () => 2026,
-    newCode: () => 'KXQRTZ',
-  })
-  return transport
+  const channels = createMemoryChannels()
+  return (playerId: string) =>
+    createLocalTransport({
+      playerId,
+      channels,
+      joinTimeoutMs: 50,
+      newSeed: () => 2026,
+      newCode: () => 'KXQRTZ',
+    })
 }
 
 const SEVEN = ['mafioso', 'mafioso', 'medic', 'detective', 'villager', 'villager', 'villager']
 const NAMES = ['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay', 'Gus']
 
 async function fullRoom() {
-  const transport = setup()
-  const host = await transport.host('host', 'Chisp')
+  const device = setup()
+  const host = await device('host').host('Chisp')
   const hostWatch = watch(host)
   const players = await Promise.all(
-    NAMES.map((name) => transport.join('KXQRTZ', name.toLowerCase(), name)),
+    NAMES.map((name) => device(name.toLowerCase()).join('KXQRTZ', name)),
   )
   const playerWatches = players.map(watch)
-  return { transport, host, hostWatch, players, playerWatches }
+  return { device, host, hostWatch, players, playerWatches }
 }
 
 describe('local transport', () => {
   it('creates a room with a code and shows the narrator an empty lobby', async () => {
-    const host = await setup().host('host', 'Chisp')
+    const host = await setup()('host').host('Chisp')
     const w = watch(host)
     expect(host.code).toBe('KXQRTZ')
     expect(host.isHost).toBe(true)
@@ -71,24 +74,24 @@ describe('local transport', () => {
   })
 
   it('rejects a code with no game', async () => {
-    const transport = setup()
-    await expect(transport.join('NOPENO', 'ana', 'Ana')).rejects.toMatchObject({
+    const device = setup()
+    await expect(device('ana').join('NOPENO', 'Ana')).rejects.toMatchObject({
       code: 'room-not-found',
     })
   })
 
   it('rejects a duplicate name', async () => {
-    const transport = setup()
-    await transport.host('host', 'Chisp')
-    await transport.join('KXQRTZ', 'ana', 'Ana')
-    const attempt = transport.join('KXQRTZ', 'ana2', 'ana')
+    const device = setup()
+    await device('host').host('Chisp')
+    await device('ana').join('KXQRTZ', 'Ana')
+    const attempt = device('ana2').join('KXQRTZ', 'ana')
     await expect(attempt).rejects.toBeInstanceOf(JoinError)
     await expect(attempt).rejects.toMatchObject({ code: 'duplicate-name' })
   })
 
   it('lets a player rejoin after a refresh without taking a new seat', async () => {
-    const { transport, hostWatch } = await fullRoom()
-    await transport.join('KXQRTZ', 'ana', 'Ana')
+    const { device, hostWatch } = await fullRoom()
+    await device('ana').join('KXQRTZ', 'Ana')
     await settle()
     expect((hostWatch.view as NarratorView).game.players).toHaveLength(7)
   })
@@ -122,10 +125,10 @@ describe('local transport', () => {
   })
 
   it('refuses new players once the game has started', async () => {
-    const { transport, host } = await fullRoom()
+    const { device, host } = await fullRoom()
     host.send({ type: 'setRoleSlots', slots: SEVEN })
     host.send({ type: 'deal' })
-    await expect(transport.join('KXQRTZ', 'late', 'Late')).rejects.toMatchObject({
+    await expect(device('late').join('KXQRTZ', 'Late')).rejects.toMatchObject({
       code: 'wrong-phase',
       message: 'This game has already started.',
     })
@@ -155,6 +158,10 @@ describe('local transport', () => {
     host.send({ type: 'removePlayer', id: 'gus' })
     await settle()
     expect(playerWatches[6].last).toEqual({ type: 'closed', reason: 'removed' })
+  })
+
+  it('cannot resume a room after the narrator tab is gone', async () => {
+    await expect(setup()('host').resumeHost('KXQRTZ')).rejects.toMatchObject({ code: 'room-not-found' })
   })
 
   it('tells players when the narrator leaves', async () => {
