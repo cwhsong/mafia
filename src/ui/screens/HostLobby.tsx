@@ -4,6 +4,7 @@ import { AVAILABLE_ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { countRoles, withRoleCount, fillWithVillagers, joinLink } from '../helpers'
 import type { InRoomState, RoomSession } from '../roomSession'
+import { LeaveButton } from '../components/LeaveButton'
 import { isTestMode } from '../testMode'
 
 interface Props {
@@ -32,15 +33,16 @@ export function HostLobby({ session, state, game }: Props) {
     }
   }
 
-  // Test mode only: fill the lobby with pretend players so you can test with fewer tabs.
-  function addTestPlayers() {
-    const names = ['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal']
+  // Test mode only: pretend players, so you can test with fewer tabs.
+  function addTestPlayers(count: number) {
+    const names = ['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jon', 'Kit', 'Lou']
     const taken = new Set(game.players.map((p) => p.name.toLowerCase()))
     names
       .filter((n) => !taken.has(n.toLowerCase()))
-      .slice(0, 5)
+      .slice(0, count)
       .forEach((name) => session.send({ type: 'addPlayer', id: `test-${name.toLowerCase()}`, name }))
   }
+  const toMinimum = Math.max(0, MIN_PLAYERS - game.players.length)
 
   return (
     <div className="room">
@@ -56,9 +58,14 @@ export function HostLobby({ session, state, game }: Props) {
           <button type="button" className="btn btn-small" onClick={copyLink}>
             {copied ? 'Copied' : 'Copy join link'}
           </button>
+          {isTestMode && toMinimum > 0 && (
+            <button type="button" className="btn btn-small btn-quiet" onClick={() => addTestPlayers(toMinimum)}>
+              Fill to {MIN_PLAYERS} with test players
+            </button>
+          )}
           {isTestMode && (
-            <button type="button" className="btn btn-small btn-quiet" onClick={addTestPlayers}>
-              + 5 test players
+            <button type="button" className="btn btn-small btn-quiet" onClick={() => addTestPlayers(1)}>
+              + 1 test player
             </button>
           )}
         </div>
@@ -169,9 +176,7 @@ export function HostLobby({ session, state, game }: Props) {
         >
           Deal roles
         </button>
-        <button type="button" className="btn btn-quiet" onClick={session.leave}>
-          Close room
-        </button>
+        <LeaveButton label="Close room" warning="Everyone in the lobby will be sent back to the start." onConfirm={session.leave} />
       </section>
     </div>
   )

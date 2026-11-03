@@ -38,10 +38,11 @@ describe('reduce sends each command to the right function', () => {
     expect(reduce(state, { type: 'advance' })).toEqual(advancePhase(state))
   })
 
-  it('eliminate', () => {
+  it('eliminate, and records a narrator elimination on the public record', () => {
     const state = gameWithRoles(five)
-    expect(reduce(state, { type: 'eliminate', playerIds: ['id3'], cause: 'vote' }))
-      .toEqual(eliminate(state, ['id3'], 'vote'))
+    const after = reduce(state, { type: 'eliminate', playerIds: ['id3'], cause: 'host' })
+    expect(after.players).toEqual(eliminate(state, ['id3'], 'host').players)
+    expect(after.history).toEqual([{ kind: 'narrator-eliminated', round: 1, phase: 'day', playerIds: ['id3'] }])
   })
 })
 

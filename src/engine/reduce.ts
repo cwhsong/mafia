@@ -21,8 +21,12 @@ export function reduce(state: GameState, command: Command): GameState {
       return dealRoles(state)
     case 'advance':
       return advancePhase(state)
-    case 'eliminate':
-      return eliminate(state, command.playerIds, command.cause)
+    case 'eliminate': {
+      // The narrator removing players by hand goes on the public record too
+      const after = eliminate(state, command.playerIds, command.cause)
+      const entry = { kind: 'narrator-eliminated', round: state.round, phase: state.phase, playerIds: command.playerIds } as const
+      return { ...after, history: [...after.history, entry] }
+    }
     case 'submitAction':
       return submitAction(state, command.playerId, command.targetId)
     case 'resolveNight':

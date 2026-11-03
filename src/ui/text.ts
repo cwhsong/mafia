@@ -1,9 +1,24 @@
-import type { NightChoice, PrivateResult, StoryBeat, Team } from '../engine'
+import type { NightChoice, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
 
 // Everything the screens say about night actions, messages and story beats lives here,
 // so the wording stays consistent and can be tested.
 
 type NameOf = (id: string | null | undefined) => string
+
+// "Ana", "Ana and Ben", "Ana, Ben, Cal"
+export function joinNames(names: string[]): string {
+  if (names.length <= 2) return names.join(' and ')
+  return names.join(', ')
+}
+
+// Shown at dawn to players with nothing to report, so nobody stands out by reading
+// nothing. It changes from night to night, and it never goes in the log.
+export const QUIET_NIGHT = [
+  'A quiet night for you.',
+  'You slept through the night.',
+  'The night passed in silence.',
+  'Nothing stirred near you tonight.',
+]
 
 export const ACTION_VERB: Record<NightChoice, string> = {
   kill: 'kill',
@@ -41,7 +56,7 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
     case 'mafia-chose':
       return result.targetId ? `The Mafia chose ${nameOf(result.targetId)}.` : 'The Mafia didn’t choose anyone.'
     case 'slept':
-      return 'You slept through the night.'
+      return QUIET_NIGHT[(result.round - 1) % QUIET_NIGHT.length]
     case 'no-pick':
       return result.action === 'protect'
         ? 'You didn’t protect anyone.'
@@ -51,12 +66,59 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
   }
 }
 
-// The same message in the "Your nights" log, where a Villager's decoy pick is worth keeping.
-export function logText(result: PrivateResult, nameOf: NameOf): string {
-  if (result.kind === 'slept' && result.suspectedId) {
-    return `You slept through the night. You suspected ${nameOf(result.suspectedId)}.`
+// ---------- Your log ----------
+
+export interface LogLine {
+  text: string
+  private: boolean // only you can see this line
+}
+
+export interface LogSection {
+  heading: string // "Day 2", "Night 1"
+  lines: LogLine[]
+}
+
+function publicText(entry: PublicEntry, nameOf: NameOf): string {
+  switch (entry.kind) {
+    case 'night':
+      return lastNightText(entry.deaths, nameOf)
+    case 'vote':
+      return entry.eliminatedId
+        ? `${nameOf(entry.eliminatedId)} was voted out (${joinNames(entry.voters.map(nameOf))}).`
+        : 'Nobody was voted out.'
+    case 'narrator-eliminated':
+      return `${joinNames(entry.playerIds.map(nameOf))} ${entry.playerIds.length === 1 ? 'was' : 'were'} eliminated by the narrator.`
   }
-  return messageText(result, nameOf)
+}
+
+function sectionOf(entry: PublicEntry): { round: number; night: boolean } {
+  if (entry.kind === 'night') return { round: entry.round, night: true }
+  if (entry.kind === 'vote') return { round: entry.round, night: false }
+  return { round: entry.round, night: entry.phase === 'night' || entry.phase === 'dawn' }
+}
+
+// The game so far, Town of Salem style: public events and your private results,
+// grouped by day and night, oldest first. Quiet-night filler is left out.
+export function buildLog(history: PublicEntry[], results: PrivateResult[], nameOf: NameOf): LogSection[] {
+  const sections = new Map<string, { round: number; night: boolean; lines: LogLine[] }>()
+  const add = (round: number, night: boolean, line: LogLine) => {
+    const key = `${round}-${night ? 'n' : 'd'}`
+    if (!sections.has(key)) sections.set(key, { round, night, lines: [] })
+    sections.get(key)!.lines.push(line)
+  }
+
+  for (const result of results) {
+    if (result.kind === 'slept') continue
+    add(result.round, true, { text: messageText(result, nameOf), private: true })
+  }
+  for (const entry of history) {
+    const { round, night } = sectionOf(entry)
+    add(round, night, { text: publicText(entry, nameOf), private: false })
+  }
+
+  return [...sections.values()]
+    .sort((a, b) => a.round - b.round || Number(a.night) - Number(b.night))
+    .map((s) => ({ heading: `${s.night ? 'Night' : 'Day'} ${s.round}`, lines: s.lines }))
 }
 
 // One line of the narrator's story at dawn. roleOf gives a player's role name.
@@ -87,7 +149,7 @@ export function beatText(beat: StoryBeat, nameOf: NameOf, roleOf: (id: string) =
 
 export function lastNightText(deaths: string[], nameOf: NameOf): string {
   if (deaths.length === 0) return 'Nobody died last night.'
-  return `${deaths.map(nameOf).join(' and ')} ${deaths.length === 1 ? 'was' : 'were'} killed in the night.`
+  return `${joinNames(deaths.map(nameOf))} ${deaths.length === 1 ? 'was' : 'were'} killed in the night.`
 }
 
 export function lastVoteText(eliminatedId: string | null, nameOf: NameOf): string {

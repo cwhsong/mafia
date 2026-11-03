@@ -105,11 +105,15 @@ describe('revealing the vote', () => {
     expect(state.votes).toEqual({})
     expect(state.voteResult).toBeNull()
     expect(state.lastVote).toEqual({ round: 2, eliminatedId: 'ana' })
+    expect(state.history.at(-1)).toEqual({
+      kind: 'vote', round: 2, eliminatedId: 'ana', voters: ['cal', 'dee', 'eve', 'fay', 'gus'],
+    })
     expect(state.log.at(-2)).toEqual({ type: 'eliminated', playerId: 'ana', cause: 'vote' })
   })
 
   it('moves on to the night when nobody is out', () => {
     const state = reduce(close(voting()), { type: 'revealVote' })
+    expect(state.history.at(-1)).toEqual({ kind: 'vote', round: 2, eliminatedId: null, voters: [] })
     expect(state.phase).toBe('night')
     expect(state.players.every((p) => p.alive)).toBe(true)
   })

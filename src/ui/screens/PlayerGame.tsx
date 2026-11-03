@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ABSTAIN, type PlayerView, type PrivateResult } from '../../engine'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
+import { LeaveButton } from '../components/LeaveButton'
 import { RoleCard } from '../components/RoleCard'
 import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
@@ -9,7 +10,7 @@ import { PickList, Stamp, type PickOption } from '../components/PickList'
 import { usePick } from '../usePick'
 import { phaseLabel, teamOf } from '../helpers'
 import {
-  ACTION_VERB, gameOverSubtext, lastNightText, lastVoteText, logText, messageText, nightSubtext,
+  ACTION_VERB, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext,
 } from '../text'
 import type { InRoomState, RoomSession } from '../roomSession'
 
@@ -201,23 +202,24 @@ function Messages({ results, nameOf }: { results: PrivateResult[]; nameOf: NameO
   )
 }
 
-function YourNights({ results, nameOf }: { results: PrivateResult[]; nameOf: NameOf }) {
-  if (results.length === 0) return null
-  const rounds = [...new Set(results.map((r) => r.round))]
+function YourLog({ view, nameOf }: { view: PlayerView; nameOf: NameOf }) {
+  const sections = buildLog(view.history, view.messages, nameOf)
+  if (sections.length === 0) return null
   return (
     <section className="stack">
-      <p className="section-label">Your nights</p>
-      <ol className="log">
-        {rounds.map((round) => (
-          <li key={round}>
-            Night {round}:{' '}
-            {results
-              .filter((r) => r.round === round)
-              .map((r) => logText(r, nameOf))
-              .join(' ')}
-          </li>
+      <p className="section-label">Your log</p>
+      <div className="log">
+        {sections.map((section) => (
+          <div key={section.heading} className="log-section">
+            <p className="log-heading">{section.heading}</p>
+            {section.lines.map((line, i) => (
+              <p key={i} className={line.private ? 'log-private' : ''}>
+                {line.text}
+              </p>
+            ))}
+          </div>
         ))}
-      </ol>
+      </div>
     </section>
   )
 }
@@ -229,7 +231,6 @@ export function PlayerGame({ session, state, view }: Props) {
   const nameOf = useNames(view)
   const me = view.me
   const roleId = me?.roleId
-  const alive = Boolean(me?.alive)
 
   if (view.phase === 'ended' && view.winner && view.revealedRoles) {
     const roles = view.revealedRoles
@@ -242,56 +243,27 @@ export function PlayerGame({ session, state, view }: Props) {
           players={view.players.map((p) => ({ ...p, roleId: roles[p.id] ?? '' }))}
           meId={me?.id}
         />
-        <YourNights results={view.messages} nameOf={nameOf} />
-        <button type="button" className="btn btn-quiet" onClick={session.leave}>
-          Leave room
-        </button>
+        <YourLog view={view} nameOf={nameOf} />
+        <LeaveButton label="Leave room" onConfirm={session.leave} />
       </div>
     )
   }
 
   const { title, subtext } = heading(view)
   const thisNight = view.messages.filter((r) => r.round === view.round)
-  const lastNightsMessages = view.messages.filter((r) => r.round === view.round - 1)
   const showPicker = (view.phase === 'night' && view.night) || view.phase === 'vote'
 
-  return (
-    <div className="room">
-      <RoomHeader code={state.code} />
+  const isDayOne = view.phase === 'day' && view.round === 1
 
-      {state.error && <ErrorBanner message={state.error.message} onDismiss={session.dismissError} />}
-
-      <ScreenHeading label={phaseLabel(view.phase, view.round)} title={title} subtext={subtext} />
-
-      {/* Messages and summaries sit between the heading and the list */}
-      {view.phase === 'dawn' && <Messages results={thisNight} nameOf={nameOf} />}
-      {view.phase === 'day' && view.lastNight && (
-        <>
-          <p className="summary">{lastNightText(view.lastNight.deaths, nameOf)}</p>
-          {alive && <Messages results={lastNightsMessages} nameOf={nameOf} />}
-        </>
-      )}
-      {view.phase === 'night' && view.lastVote && (
-        <p className="summary">{lastVoteText(view.lastVote.eliminatedId, nameOf)}</p>
-      )}
-
-      {view.phase === 'night' && view.night && <NightAction session={session} view={view} nameOf={nameOf} />}
-      {view.phase === 'vote' && view.vote && <VoteAction session={session} view={view} nameOf={nameOf} />}
-
-      {roleId ? (
-        <section className="stack">
-          {showPicker && <p className="section-label">Your role</p>}
-          <RoleCard roleId={roleId} faceUp={faceUp} onToggle={() => setFaceUp((up) => !up)} />
-          <p className="hint" style={{ textAlign: 'center' }}>
-            {faceUp ? 'Tap the card to hide it again.' : 'Make sure nobody is looking, then tap.'}
-          </p>
-        </section>
-      ) : (
-        <p className="muted">You’re watching this game.</p>
-      )}
-
+  const roleSection = roleId ? (
+    <section className="stack">
+      {!isDayOne && <p className="section-label">Your role</p>}
+      <RoleCard roleId={roleId} faceUp={faceUp} onToggle={() => setFaceUp((up) => !up)} />
+      <p className="hint" style={{ textAlign: 'center' }}>
+        {faceUp ? 'Tap the card to hide it again.' : 'Make sure nobody is looking, then tap.'}
+      </p>
       {faceUp && view.teammates.length > 0 && (
-        <section className="panel stack">
+        <div className="panel stack">
           <p className="section-label team-mafia">Your fellow Mafia</p>
           <ul className="list">
             {view.teammates.map((t) => (
@@ -301,34 +273,69 @@ export function PlayerGame({ session, state, view }: Props) {
               </li>
             ))}
           </ul>
-        </section>
+        </div>
+      )}
+    </section>
+  ) : (
+    <p className="muted">You’re watching this game.</p>
+  )
+
+  const table = (
+    <section className="stack">
+      <div className="section-head">
+        <p className="section-label">At the table</p>
+        <span className="hint">{view.players.filter((p) => p.alive).length} still in</span>
+      </div>
+      <ul className="list">
+        {view.players.map((p) => (
+          <li key={p.id}>
+            <span>
+              <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
+              {p.id === me?.id && <span className="you"> (you)</span>}
+            </span>
+            {!p.alive && <span className="hint">out</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
+  return (
+    <div className="room">
+      <RoomHeader code={state.code} />
+
+      {state.error && <ErrorBanner message={state.error.message} onDismiss={session.dismissError} />}
+
+      <ScreenHeading label={phaseLabel(view.phase, view.round)} title={title} subtext={subtext} />
+
+      {isDayOne ? (
+        // Day 1 is for checking your role, so it comes first
+        <>
+          {roleSection}
+          {table}
+          <YourLog view={view} nameOf={nameOf} />
+        </>
+      ) : (
+        // Every other phase: what just happened, then what to do, then the record
+        <>
+          {view.phase === 'dawn' && <Messages results={thisNight} nameOf={nameOf} />}
+          {view.phase === 'day' && view.lastNight && (
+            <p className="summary">{lastNightText(view.lastNight.deaths, nameOf)}</p>
+          )}
+          {view.phase === 'night' && view.lastVote && (
+            <p className="summary">{lastVoteText(view.lastVote.eliminatedId, nameOf)}</p>
+          )}
+
+          {view.phase === 'night' && view.night && <NightAction session={session} view={view} nameOf={nameOf} />}
+          {view.phase === 'vote' && view.vote && <VoteAction session={session} view={view} nameOf={nameOf} />}
+
+          <YourLog view={view} nameOf={nameOf} />
+          {!showPicker && table}
+          {roleSection}
+        </>
       )}
 
-      {!showPicker && (
-        <section className="stack">
-          <div className="section-head">
-            <p className="section-label">At the table</p>
-            <span className="hint">{view.players.filter((p) => p.alive).length} still in</span>
-          </div>
-          <ul className="list">
-            {view.players.map((p) => (
-              <li key={p.id}>
-                <span>
-                  <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
-                  {p.id === me?.id && <span className="you"> (you)</span>}
-                </span>
-                {!p.alive && <span className="hint">out</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <YourNights results={view.messages} nameOf={nameOf} />
-
-      <button type="button" className="btn btn-quiet" onClick={session.leave}>
-        Leave room
-      </button>
+      <LeaveButton label="Leave room" warning="You can rejoin with the room code." onConfirm={session.leave} />
     </div>
   )
 }
