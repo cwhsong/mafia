@@ -279,8 +279,19 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
     })
   }
 
+  // Any unexpected failure (offline, permission denied) becomes a plain-language JoinError.
+  async function guard<T>(attempt: () => Promise<T>): Promise<T> {
+    try {
+      return await attempt()
+    } catch (error) {
+      if (error instanceof JoinError) throw error
+      console.error(error)
+      throw new JoinError('unavailable', 'Couldn’t reach the game server. Check your connection and try again.')
+    }
+  }
+
   return {
-    async host(hostName) {
+    host: (hostName) => guard(async () => {
       const uid = await me()
       for (let attempt = 0; attempt < 5; attempt++) {
         const code = newCode()
@@ -297,9 +308,9 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
         return startHost(code, hostName, state)
       }
       throw new JoinError('unavailable', 'Couldn’t open a room. Try again.')
-    },
+    }),
 
-    async resumeHost(code) {
+    resumeHost: (code) => guard(async () => {
       const uid = await me()
       const meta = await readMeta(code)
       const closed = await db.get(`${roomPath(code)}/closed`)
@@ -308,9 +319,9 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       }
       const state = normalizeGameState(await db.get(`${roomPath(code)}/host/state`))
       return startHost(code, meta.hostName, state)
-    },
+    }),
 
-    async join(code, name) {
+    join: (code, name) => guard(async () => {
       const uid = await me()
       const meta = await readMeta(code)
       const closed = await db.get(`${roomPath(code)}/closed`)
@@ -322,6 +333,6 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
         )
       }
       return startPlayer(code, uid, name, meta.hostName)
-    },
+    }),
   }
 }

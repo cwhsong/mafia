@@ -248,3 +248,27 @@ describe('firebase transport', () => {
     }
   })
 })
+
+describe('firebase transport when the server refuses', () => {
+  it('turns unexpected errors into a plain message', async () => {
+    const db = createMemoryDb()
+    db.get = async () => {
+      throw new Error('PERMISSION_DENIED')
+    }
+    const transport = createFirebaseTransport({ db, signIn: async () => 'host' })
+    const quiet = console.error
+    console.error = () => {}
+    await expect(transport.host('Chisp')).rejects.toMatchObject({ code: 'unavailable' })
+    console.error = quiet
+  })
+
+  it('explains a failed sign-in', async () => {
+    const transport = createFirebaseTransport({
+      db: createMemoryDb(),
+      signIn: async () => {
+        throw new Error('auth/network-request-failed')
+      },
+    })
+    await expect(transport.join('KXQRTZ', 'Ana')).rejects.toMatchObject({ code: 'offline' })
+  })
+})
