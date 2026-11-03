@@ -9,6 +9,7 @@ import {
 } from '../engine'
 import type { Channel, RoomMessage } from './channel'
 import type { RoomConnection, RoomEvent } from './types'
+import { playerMaySend, NOT_ALLOWED } from './permissions'
 
 interface HostOptions {
   code: string
@@ -64,6 +65,20 @@ export function createHostRoom({ code, hostId, hostName, seed, channel }: HostOp
           code: error.code,
           message: error.code === 'wrong-phase' ? 'This game has already started.' : error.message,
         })
+      }
+    }
+
+    if (message.kind === 'command') {
+      // A player's own night pick or vote; anything else is refused.
+      if (!playerMaySend(message.command, message.playerId)) {
+        channel.post({ kind: 'error', to: message.playerId, ...NOT_ALLOWED })
+        return
+      }
+      try {
+        apply(message.command)
+      } catch (error) {
+        if (!(error instanceof EngineError)) throw error
+        channel.post({ kind: 'error', to: message.playerId, code: error.code, message: error.message })
       }
     }
 

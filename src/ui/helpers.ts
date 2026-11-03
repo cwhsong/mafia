@@ -32,7 +32,7 @@ export function phaseLabel(phase: Phase, round: number): string {
     case 'day':
       return `Day ${round}`
     case 'vote':
-      return `Day ${round} · Vote`
+      return `Day ${round}`
     case 'night':
       return `Night ${round}`
     case 'dawn':
@@ -42,20 +42,10 @@ export function phaseLabel(phase: Phase, round: number): string {
   }
 }
 
-// Text for the narrator's "next phase" button.
+// Text for the narrator's main button during the day.
 export function nextPhaseLabel(phase: Phase, round: number): string | null {
-  switch (phase) {
-    case 'day':
-      return round === 1 ? 'Start Night 1' : `Start the Day ${round} vote`
-    case 'vote':
-      return `Start Night ${round}`
-    case 'night':
-      return `End the night (Dawn ${round})`
-    case 'dawn':
-      return `Start Day ${round + 1}`
-    default:
-      return null
-  }
+  if (phase !== 'day') return null
+  return round === 1 ? 'Start Night 1' : 'Start the vote'
 }
 
 // How an elimination is recorded, based on when the narrator makes it.

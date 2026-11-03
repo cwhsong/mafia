@@ -1,14 +1,16 @@
-import type { PlayerView } from '../engine'
+import type { Command, PlayerView } from '../engine'
 
 // Messages sent between tabs in one room.
 export type RoomMessage =
   // player → host
   | { kind: 'join'; playerId: string; name: string }
   | { kind: 'leave'; playerId: string }
+  | { kind: 'command'; playerId: string; command: Command }
   // host → one player (every tab receives it; only the addressee uses it)
   | { kind: 'view'; to: string; view: PlayerView; hostName: string }
   | { kind: 'rejected'; to: string; code: string; message: string }
   | { kind: 'removed'; to: string }
+  | { kind: 'error'; to: string; code: string; message: string }
   // host → everyone
   | { kind: 'closed' }
 

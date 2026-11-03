@@ -15,6 +15,14 @@ export function createGame(hostId: string, seed: number): GameState {
     seed,
     winner: null,
     log: [],
+    nightPicks: {},
+    dawn: null,
+    lastNight: null,
+    results: {},
+    selfTargets: {},
+    votes: {},
+    voteResult: null,
+    lastVote: null,
   }
 }
 

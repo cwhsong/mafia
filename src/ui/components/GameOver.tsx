@@ -13,15 +13,17 @@ interface Props {
   winner: Team
   players: RevealedPlayer[]
   meId?: string
+  subtext?: string | null
 }
 
 // Shown to everyone when the game ends: the winner, then every role revealed.
-export function GameOver({ winner, players, meId }: Props) {
+export function GameOver({ winner, players, meId, subtext }: Props) {
   return (
     <>
       <section className="stack">
         <p className="section-label">Game over</p>
         <h1 className={`room-title team-${winner}`}>{winnerLabel(winner)}.</h1>
+        {subtext && <p className="muted">{subtext}</p>}
       </section>
 
       <section className="stack">

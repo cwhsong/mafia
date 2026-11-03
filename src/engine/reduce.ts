@@ -4,6 +4,8 @@ import { addPlayer, removePlayer, setRoleSlots } from './setup'
 import { dealRoles } from './deal'
 import { advancePhase } from './phases'
 import { eliminate } from './eliminate'
+import { submitAction, resolveNight, reveal } from './night'
+import { castVote, closeVote, reopenVote, revealVote } from './vote'
 
 // The one way to change a game: give it the current state and a command,
 // get back the new state.
@@ -21,6 +23,20 @@ export function reduce(state: GameState, command: Command): GameState {
       return advancePhase(state)
     case 'eliminate':
       return eliminate(state, command.playerIds, command.cause)
+    case 'submitAction':
+      return submitAction(state, command.playerId, command.targetId)
+    case 'resolveNight':
+      return resolveNight(state)
+    case 'reveal':
+      return reveal(state)
+    case 'castVote':
+      return castVote(state, command.playerId, command.targetId)
+    case 'closeVote':
+      return closeVote(state)
+    case 'reopenVote':
+      return reopenVote(state)
+    case 'revealVote':
+      return revealVote(state)
     default: {
       // If every command type is handled above, TypeScript knows this line can't be reached.
       const unhandled: never = command

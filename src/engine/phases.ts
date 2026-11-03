@@ -7,12 +7,22 @@ export function advancePhase(state: GameState): GameState {
   assertPhase(state, 'day', 'vote', 'night', 'dawn')
 
   const next = nextStep(state.phase, state.round)
+  return enterPhase(state, next.phase, next.round)
+}
+
+// Moves to a phase, clearing whatever belonged to the one before it.
+export function enterPhase(state: GameState, phase: Phase, round: number): GameState {
+  const fresh: Partial<GameState> = {}
+  if (phase === 'night') Object.assign(fresh, { nightPicks: {}, votes: {}, voteResult: null })
+  if (phase === 'day') Object.assign(fresh, { dawn: null, nightPicks: {} })
+  if (phase === 'vote') Object.assign(fresh, { votes: {}, voteResult: null })
 
   return {
     ...state,
-    phase: next.phase,
-    round: next.round,
-    log: [...state.log, { type: 'phase', phase: next.phase, round: next.round }],
+    ...fresh,
+    phase,
+    round,
+    log: [...state.log, { type: 'phase', phase, round }],
   }
 }
 

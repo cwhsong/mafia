@@ -38,7 +38,7 @@ beforeEach(async () => {
       meta: { hostUid: 'narrator', hostName: 'Chisp', createdAt: Date.now() },
       host: { state: { seed: 1234, phase: 'lobby' } },
       views: { ana: { kind: 'player', phase: 'lobby' }, ben: { kind: 'player', phase: 'lobby' } },
-      requests: { cal: { type: 'join', name: 'Cal' } },
+      requests: { cal: { r1: { type: 'join', name: 'Cal' } } },
       notices: { ben: { kind: 'rejected', code: 'duplicate-name' } },
     })
   })
@@ -94,7 +94,7 @@ describe('writing', () => {
       update(ref(as('narrator')), {
         [`${room}/views/ana`]: { kind: 'player', phase: 'day' },
         [`${room}/host/state/phase`]: 'day',
-        [`${room}/requests/cal`]: null,
+        [`${room}/requests/cal/r1`]: null,
         [`${room}/closed`]: true,
       }),
     )
@@ -106,19 +106,27 @@ describe('writing', () => {
     await assertFails(set(ref(as('ana'), `${room}/closed`), true))
   })
 
-  it('lets a player ask to join or leave under their own id only', async () => {
-    await assertSucceeds(set(ref(as('dee'), `${room}/requests/dee`), { type: 'join', name: 'Dee' }))
-    await assertSucceeds(set(ref(as('ana'), `${room}/requests/ana`), { type: 'leave' }))
-    await assertFails(set(ref(as('dee'), `${room}/requests/eve`), { type: 'join', name: 'Eve' }))
+  it('lets a player send requests under their own id only', async () => {
+    await assertSucceeds(set(ref(as('dee'), `${room}/requests/dee/r1`), { type: 'join', name: 'Dee' }))
+    await assertSucceeds(set(ref(as('ana'), `${room}/requests/ana/r2`), { type: 'leave' }))
+    await assertSucceeds(
+      set(ref(as('ana'), `${room}/requests/ana/r3`), {
+        type: 'command',
+        command: JSON.stringify({ type: 'submitAction', playerId: 'ana', targetId: 'ben' }),
+      }),
+    )
+    await assertFails(set(ref(as('dee'), `${room}/requests/eve/r1`), { type: 'join', name: 'Eve' }))
   })
 
-  it('rejects malformed requests and over-long names', async () => {
-    await assertFails(set(ref(as('dee'), `${room}/requests/dee`), { type: 'deal' }))
-    await assertFails(set(ref(as('dee'), `${room}/requests/dee`), { type: 'join', name: 'x'.repeat(25) }))
+  it('rejects malformed requests, over-long names and over-long commands', async () => {
+    await assertFails(set(ref(as('dee'), `${room}/requests/dee/r1`), { type: 'deal' }))
+    await assertFails(set(ref(as('dee'), `${room}/requests/dee/r1`), { type: 'join', name: 'x'.repeat(25) }))
+    await assertFails(set(ref(as('dee'), `${room}/requests/dee/r1`), { type: 'command', command: 'x'.repeat(501) }))
+    await assertFails(set(ref(as('dee'), `${room}/requests/dee`), { type: 'join', name: 'Dee' }))
   })
 
-  it('does not accept join requests for rooms that do not exist', async () => {
-    await assertFails(set(ref(as('dee'), 'rooms/ABCDEF/requests/dee'), { type: 'join', name: 'Dee' }))
+  it('does not accept requests for rooms that do not exist', async () => {
+    await assertFails(set(ref(as('dee'), 'rooms/ABCDEF/requests/dee/r1'), { type: 'join', name: 'Dee' }))
   })
 
   it('lets a player clear their own notice but not write one', async () => {

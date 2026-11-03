@@ -36,7 +36,7 @@ describe('labels', () => {
     expect(phaseLabel('day', 1)).toBe('Day 1')
     expect(phaseLabel('night', 1)).toBe('Night 1')
     expect(phaseLabel('dawn', 1)).toBe('Dawn 1')
-    expect(phaseLabel('vote', 2)).toBe('Day 2 · Vote')
+    expect(phaseLabel('vote', 2)).toBe('Day 2')
     expect(phaseLabel('ended', 3)).toBe('Game over')
   })
 
@@ -57,12 +57,10 @@ describe('labels', () => {
 })
 
 describe('narrator controls', () => {
-  it('labels the next-phase button for every step of the cycle', () => {
+  it('labels the narrator’s day button', () => {
     expect(nextPhaseLabel('day', 1)).toBe('Start Night 1')
-    expect(nextPhaseLabel('night', 1)).toBe('End the night (Dawn 1)')
-    expect(nextPhaseLabel('dawn', 1)).toBe('Start Day 2')
-    expect(nextPhaseLabel('day', 2)).toBe('Start the Day 2 vote')
-    expect(nextPhaseLabel('vote', 2)).toBe('Start Night 2')
+    expect(nextPhaseLabel('day', 2)).toBe('Start the vote')
+    expect(nextPhaseLabel('night', 1)).toBeNull()
     expect(nextPhaseLabel('lobby', 0)).toBeNull()
     expect(nextPhaseLabel('ended', 3)).toBeNull()
   })
