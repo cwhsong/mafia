@@ -18,6 +18,7 @@ export function PlayerLobby({ session, state, view }: Props) {
       <RoomHeader code={state.code} />
 
       <section className="stack">
+        <p className="section-label">Lobby</p>
         <h1 className="room-title">You’re in, {view.me?.name}.</h1>
         <p className="muted">{state.hostName} is narrating.</p>
         <p className="waiting">Waiting for the narrator to deal the roles…</p>
