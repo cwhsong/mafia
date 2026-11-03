@@ -10,7 +10,7 @@ import { PickList, Stamp, type PickOption } from '../components/PickList'
 import { usePick } from '../usePick'
 import { phaseLabel, teamOf } from '../helpers'
 import {
-  ACTION_VERB, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext,
+  ACTION_VERB, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText,
 } from '../text'
 import type { InRoomState, RoomSession } from '../roomSession'
 
@@ -30,6 +30,9 @@ function useNames(view: PlayerView): NameOf {
 // ---------- Heading ----------
 
 function heading(view: PlayerView): { title: string; subtext: string } {
+  if (view.phase === 'finale') {
+    return { title: 'Daybreak.', subtext: 'The narrator will tell how it ends.' }
+  }
   if (view.me && !view.me.alive) {
     return {
       title: 'You were eliminated',
@@ -54,12 +57,12 @@ function heading(view: PlayerView): { title: string; subtext: string } {
       return { title: 'Dawn breaks', subtext: 'Listen to the narrator’s story of the night.' }
     case 'vote':
       return {
-        title: 'The town votes',
+        title: 'Discuss and vote',
         subtext: view.vote?.closed
           ? 'The vote is closed. Waiting for the narrator…'
           : view.vote?.myVote
             ? 'Vote cast. You can change it until the narrator closes the vote.'
-            : 'Tap who you want to vote out.',
+            : 'Talk it through, then vote. You can change your vote until the narrator closes it.',
       }
     default:
       return { title: '', subtext: '' }
@@ -306,7 +309,11 @@ export function PlayerGame({ session, state, view }: Props) {
 
       {state.error && <ErrorBanner message={state.error.message} onDismiss={session.dismissError} />}
 
-      <ScreenHeading label={phaseLabel(view.phase, view.round)} title={title} subtext={subtext} />
+      <ScreenHeading
+        label={view.finale ? phaseLabel(view.finale.fromPhase, view.finale.round) : phaseLabel(view.phase, view.round)}
+        title={title}
+        subtext={subtext}
+      />
 
       {isDayOne ? (
         // Day 1 is for checking your role, so it comes first
@@ -319,8 +326,13 @@ export function PlayerGame({ session, state, view }: Props) {
         // Every other phase: what just happened, then what to do, then the record
         <>
           {view.phase === 'dawn' && <Messages results={thisNight} nameOf={nameOf} />}
-          {view.phase === 'day' && view.lastNight && (
-            <p className="summary">{lastNightText(view.lastNight.deaths, nameOf)}</p>
+          {(view.phase === 'day' || view.phase === 'vote') &&
+            view.lastNight &&
+            view.lastNight.round === view.round - 1 && (
+              <p className="summary">{lastNightText(view.lastNight.deaths, nameOf)}</p>
+            )}
+          {view.phase === 'finale' && view.history.length > 0 && (
+            <p className="summary">{publicEntryText(view.history[view.history.length - 1], nameOf)}</p>
           )}
           {view.phase === 'night' && view.lastVote && (
             <p className="summary">{lastVoteText(view.lastVote.eliminatedId, nameOf)}</p>

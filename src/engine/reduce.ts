@@ -6,6 +6,7 @@ import { advancePhase } from './phases'
 import { eliminate } from './eliminate'
 import { submitAction, resolveNight, reveal } from './night'
 import { castVote, closeVote, reopenVote, revealVote } from './vote'
+import { toFinale, revealWinner } from './finale'
 
 // The one way to change a game: give it the current state and a command,
 // get back the new state.
@@ -25,7 +26,7 @@ export function reduce(state: GameState, command: Command): GameState {
       // The narrator removing players by hand goes on the public record too
       const after = eliminate(state, command.playerIds, command.cause)
       const entry = { kind: 'narrator-eliminated', round: state.round, phase: state.phase, playerIds: command.playerIds } as const
-      return { ...after, history: [...after.history, entry] }
+      return toFinale(state, { ...after, history: [...after.history, entry] })
     }
     case 'submitAction':
       return submitAction(state, command.playerId, command.targetId)
@@ -41,6 +42,8 @@ export function reduce(state: GameState, command: Command): GameState {
       return reopenVote(state)
     case 'revealVote':
       return revealVote(state)
+    case 'revealWinner':
+      return revealWinner(state)
     default: {
       // If every command type is handled above, TypeScript knows this line can't be reached.
       const unhandled: never = command

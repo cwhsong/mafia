@@ -136,7 +136,7 @@ describe('playerView at night', () => {
 describe('playerView during the vote', () => {
   const voting = () =>
     applyCommands(setupGame(cast), [
-      { type: 'advance' }, { type: 'resolveNight' }, { type: 'reveal' }, { type: 'advance' },
+      { type: 'advance' }, { type: 'resolveNight' }, { type: 'reveal' },
       { type: 'castVote', playerId: 'eve', targetId: 'ana' },
       { type: 'castVote', playerId: 'fay', targetId: ABSTAIN },
     ])
@@ -153,6 +153,31 @@ describe('playerView during the vote', () => {
     const view = playerView(state, 'gus')
     expect(view.vote?.closed).toBe(true)
     expect(JSON.stringify(view)).not.toContain('eliminatedId')
+  })
+})
+
+describe('playerView in the finale', () => {
+  it('shows the game is decided without giving away the winner or any roles', () => {
+    const state = applyCommands(setupGame(cast), [
+      { type: 'eliminate', playerIds: ['ana', 'ben'], cause: 'vote' },
+    ])
+    expect(state.phase).toBe('finale')
+    const view = playerView(state, 'eve')
+    expect(view.phase).toBe('finale')
+    expect(view.winner).toBeNull()
+    expect(view.revealedRoles).toBeNull()
+    expect(view.finale).toEqual({ round: 1, fromPhase: 'day' })
+    expect(JSON.stringify(view)).not.toContain('"town"')
+  })
+
+  it('reveals the winner and every role once the narrator says so', () => {
+    const state = applyCommands(setupGame(cast), [
+      { type: 'eliminate', playerIds: ['ana', 'ben'], cause: 'vote' },
+      { type: 'revealWinner' },
+    ])
+    const view = playerView(state, 'eve')
+    expect(view.winner).toBe('town')
+    expect(view.revealedRoles).toMatchObject({ ana: 'mafioso' })
   })
 })
 

@@ -46,6 +46,12 @@ describe('reduce sends each command to the right function', () => {
   })
 })
 
+describe('the finale', () => {
+  it('only reveals a winner during the finale', () => {
+    expectEngineError(() => reduce(gameWithRoles(five), { type: 'revealWinner' }), 'wrong-phase')
+  })
+})
+
 describe('reduce', () => {
   it('passes engine errors through', () => {
     expectEngineError(() => reduce(lobbyWith(5), { type: 'deal' }), 'invalid-setup')

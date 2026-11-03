@@ -16,8 +16,7 @@ function voting(): GameState {
   return applyCommands(setupGame(cast), [
     { type: 'advance' },      // Night 1
     { type: 'resolveNight' }, // Dawn 1
-    { type: 'reveal' },       // Day 2
-    { type: 'advance' },      // Vote
+    { type: 'reveal' },       // Day 2: discussion and voting together
   ])
 }
 
@@ -82,7 +81,7 @@ describe('closing the vote', () => {
   it('warns the narrator when the vote will end the game', () => {
     const small = { mafioso: 'Ana', medic: 'Cal', villager: ['Eve', 'Fay', 'Gus'] }
     let state = applyCommands(setupGame(small), [
-      { type: 'advance' }, { type: 'resolveNight' }, { type: 'reveal' }, { type: 'advance' },
+      { type: 'advance' }, { type: 'resolveNight' }, { type: 'reveal' },
     ])
     state = close(vote(state, { cal: 'ana', eve: 'ana', fay: 'ana', gus: 'ana' }))
     expect(state.voteResult).toMatchObject({ eliminatedId: 'ana', endsGame: 'town' })
@@ -129,13 +128,17 @@ describe('revealing the vote', () => {
       { type: 'submitAction', playerId: 'ben', targetId: 'eve' },
       { type: 'resolveNight' },
       { type: 'reveal' },
-      { type: 'advance' },
       { type: 'castVote', playerId: 'cal', targetId: 'ben' },
       { type: 'castVote', playerId: 'dee', targetId: 'ben' },
       { type: 'castVote', playerId: 'fay', targetId: 'ben' },
       { type: 'closeVote' },
       { type: 'revealVote' },
     ])
+    // The finale: decided, but the winner waits for the narrator
+    expect(state.phase).toBe('finale')
+    expect(state.winner).toBeNull()
+    expect(state.finale).toEqual({ winner: 'town', round: 3, fromPhase: 'vote' })
+    state = reduce(state, { type: 'revealWinner' })
     expect(state.phase).toBe('ended')
     expect(state.winner).toBe('town')
   })

@@ -24,6 +24,7 @@ export function createGame(hostId: string, seed: number): GameState {
     voteResult: null,
     lastVote: null,
     history: [],
+    finale: null,
   }
 }
 

@@ -6,7 +6,7 @@ import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, type PickOption } from '../components/PickList'
 import { phaseLabel, nextPhaseLabel, causeForPhase, winnerLabel } from '../helpers'
-import { beatText, joinNames, lastNightText, lastVoteText } from '../text'
+import { beatText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
 import { LeaveButton } from '../components/LeaveButton'
 import type { InRoomState, RoomSession } from '../roomSession'
 
@@ -278,9 +278,19 @@ function headingFor(game: GameState): { title: string; subtext: string } {
     case 'vote': {
       const voted = alive.filter((p) => game.votes[p.id]).length
       return game.voteResult
-        ? { title: 'The town votes', subtext: 'The vote is closed. Build the suspense, then reveal.' }
-        : { title: 'The town votes', subtext: `${voted} of ${alive.length} have voted.` }
+        ? { title: 'Discuss and vote', subtext: 'The vote is closed. Build the suspense, then reveal.' }
+        : {
+            title: 'Discuss and vote',
+            subtext: `${voted} of ${alive.length} have voted. Close the vote when the talk winds down.`,
+          }
     }
+    case 'finale':
+      return game.finale
+        ? {
+            title: 'Tell the ending',
+            subtext: `${winnerLabel(game.finale.winner)}. ${winReason(game.finale.winner)} Reveal the winner when you’re ready.`,
+          }
+        : { title: 'Tell the ending', subtext: '' }
     default:
       return { title: '', subtext: '' }
   }
@@ -310,10 +320,24 @@ export function NarratorGame({ session, state, game }: Props) {
 
       {state.error && <ErrorBanner message={state.error.message} onDismiss={session.dismissError} />}
 
-      <ScreenHeading label={`${phaseLabel(game.phase, game.round)} · Narrator`} title={title} subtext={subtext} />
+      <ScreenHeading
+        label={`${game.finale ? phaseLabel(game.finale.fromPhase, game.finale.round) : phaseLabel(game.phase, game.round)} · Narrator`}
+        title={title}
+        subtext={subtext}
+      />
 
-      {game.phase === 'day' && game.lastNight && (
-        <p className="summary">{lastNightText(game.lastNight.deaths, nameOf)}</p>
+      {(game.phase === 'day' || (game.phase === 'vote' && !game.voteResult)) &&
+        game.lastNight &&
+        game.lastNight.round === game.round - 1 && (
+          <p className="summary">{lastNightText(game.lastNight.deaths, nameOf)}</p>
+        )}
+      {game.phase === 'finale' && game.history.length > 0 && (
+        <p className="summary">{publicEntryText(game.history[game.history.length - 1], nameOf)}</p>
+      )}
+      {game.phase === 'finale' && (
+        <button type="button" className="btn btn-primary" onClick={() => session.send({ type: 'revealWinner' })}>
+          Reveal the winner
+        </button>
       )}
       {game.phase === 'night' && game.lastVote && (
         <p className="summary">{lastVoteText(game.lastVote.eliminatedId, nameOf)}</p>
@@ -329,11 +353,11 @@ export function NarratorGame({ session, state, game }: Props) {
       {game.phase === 'vote' && <VotePanel session={session} game={game} nameOf={nameOf} />}
 
       <section className="stack">
-        <p className="section-label">The deal</p>
+        <p className="section-label">{game.phase === 'finale' ? 'Everyone’s roles' : 'The deal'}</p>
         <Deal game={game} />
       </section>
 
-      <NarratorTools session={session} game={game} nameOf={nameOf} />
+      {game.phase !== 'finale' && <NarratorTools session={session} game={game} nameOf={nameOf} />}
 
       <LeaveButton label="Close room" warning="This ends the game for everyone." onConfirm={session.leave} />
     </div>

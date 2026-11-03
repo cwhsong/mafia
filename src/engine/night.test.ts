@@ -44,7 +44,7 @@ describe('who can pick whom', () => {
   it('lets the Medic protect themselves, but only once per game', () => {
     let state = play(night(), { cal: 'cal' })
     expect(eligibleTargets(night(), 'cal')).toContain('cal')
-    state = applyCommands(resolve(state), [{ type: 'reveal' }, { type: 'advance' }, { type: 'advance' }])
+    state = applyCommands(resolve(state), [{ type: 'reveal' }, { type: 'advance' }])
     // Night 2 (via Day 2 and its vote)
     expect(state.phase).toBe('night')
     expect(eligibleTargets(state, 'cal')).not.toContain('cal')
@@ -52,7 +52,7 @@ describe('who can pick whom', () => {
 
   it('lets the Medic protect the same person every night', () => {
     let state = resolve(play(night(), { cal: 'eve' }))
-    state = applyCommands(state, [{ type: 'reveal' }, { type: 'advance' }, { type: 'advance' }])
+    state = applyCommands(state, [{ type: 'reveal' }, { type: 'advance' }])
     expect(eligibleTargets(state, 'cal')).toContain('eve')
   })
 
@@ -181,17 +181,17 @@ describe('resolving the night', () => {
 
   it('keeps every player’s messages across nights', () => {
     let state = resolve(play(night(), { dee: 'ben' }))
-    state = applyCommands(state, [{ type: 'reveal' }, { type: 'advance' }, { type: 'advance' }])
+    state = applyCommands(state, [{ type: 'reveal' }, { type: 'advance' }])
     state = resolve(play(state, { dee: 'eve' }))
     expect(state.results.dee.map((r) => r.round)).toEqual([1, 2])
   })
 })
 
 describe('reveal', () => {
-  it('applies the deaths, records them, and starts the next day', () => {
+  it('applies the deaths, records them, and opens the next day on the vote', () => {
     let state = resolve(play(night(), { ana: 'eve', ben: 'eve' }))
     state = reduce(state, { type: 'reveal' })
-    expect(state.phase).toBe('day')
+    expect(state.phase).toBe('vote')
     expect(state.round).toBe(2)
     expect(state.players.find((p) => p.id === 'eve')?.alive).toBe(false)
     expect(state.lastNight).toEqual({ round: 1, deaths: ['eve'] })
@@ -209,6 +209,11 @@ describe('reveal', () => {
     const small = { mafioso: 'Ana', medic: 'Cal', villager: 'Eve' } // 1 Mafia vs 2
     let state = reduce(setupGame(small), { type: 'advance' })
     state = reduce(resolve(play(state, { ana: 'eve' })), { type: 'reveal' })
+    expect(state.phase).toBe('finale')
+    expect(state.winner).toBeNull()
+    expect(state.finale).toEqual({ winner: 'mafia', round: 1, fromPhase: 'dawn' })
+    expect(state.players.find((p) => p.id === 'eve')?.alive).toBe(false)
+    state = reduce(state, { type: 'revealWinner' })
     expect(state.phase).toBe('ended')
     expect(state.winner).toBe('mafia')
   })
