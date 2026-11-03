@@ -2,7 +2,8 @@
 
 export type Team = 'town' | 'mafia' | 'neutral'
 
-export type Phase = 'lobby' | 'day' | 'vote' | 'night' | 'dawn' | 'ended'
+// finale: the game is decided; the narrator tells the ending before the winner is revealed
+export type Phase = 'lobby' | 'day' | 'vote' | 'night' | 'dawn' | 'finale' | 'ended'
 
 export type DeathCause = 'vote' | 'night' | 'host'
 
@@ -122,6 +123,7 @@ export interface GameState {
   voteResult: VoteResult | null           // set when the narrator closes the vote
   lastVote: { round: number; eliminatedId: string | null } | null  // shown the following night
   history: PublicEntry[]                  // the public record of the game
+  finale: { winner: Team; round: number; fromPhase: Phase } | null  // set during the finale, narrator only
 }
 
 // ---------- Commands (every change to the game is one of these) ----------
@@ -142,6 +144,7 @@ export type Command =
   | { type: 'closeVote' }
   | { type: 'reopenVote' }
   | { type: 'revealVote' }
+  | { type: 'revealWinner' }
 
 // Commands a player may send about themselves; everything else is the narrator's.
 export const PLAYER_COMMANDS = ['submitAction', 'castVote'] as const

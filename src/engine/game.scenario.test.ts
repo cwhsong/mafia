@@ -47,7 +47,8 @@ describe('full game: Town wins', () => {
     kill(town[1]),        // Another night kill (1 vs 3)
     advance,              // → Day 3
     advance,              // → Vote 3
-    voteOut(mafia[1]),    // Last Mafioso voted out → Town win
+    voteOut(mafia[1]),    // Last Mafioso voted out → the finale
+    { type: 'revealWinner' }, // the narrator reveals: Town win
   ])
 
   it('deals 2 Mafiosos and starts on Day 1', () => {
@@ -82,6 +83,7 @@ describe('full game: Town wins', () => {
       'day 3',
       'vote 3',
       'eliminated (vote)',
+      'finale 3',
       'game-over: town',
     ])
   })
@@ -108,7 +110,8 @@ describe('full game: Mafia win', () => {
     voteOut('eve'),   // Town vote out an innocent Villager (2 vs 3)
     advance,          // → Night 2
     advance,          // → Dawn 2
-    kill('fay'),      // 2 vs 2: Mafia reach parity
+    kill('fay'),      // 2 vs 2: Mafia reach parity → the finale
+    { type: 'revealWinner' },
   ])
 
   it('ends with the Mafia winning at parity', () => {
@@ -121,10 +124,11 @@ describe('full game: Mafia win', () => {
     expect(alive).toEqual(['ana', 'ben', 'dee', 'gus'])
   })
 
-  it('ends at Dawn 2, the moment of the deciding death', () => {
-    expect(timeline(final).slice(-3)).toEqual([
+  it('decides at Dawn 2, then the narrator reveals the winner', () => {
+    expect(timeline(final).slice(-4)).toEqual([
       'dawn 2',
       'eliminated (night)',
+      'finale 2',
       'game-over: mafia',
     ])
   })

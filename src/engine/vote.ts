@@ -3,6 +3,7 @@ import { EngineError, assertPhase } from './errors'
 import { checkWin } from './win'
 import { eliminate } from './eliminate'
 import { enterPhase } from './phases'
+import { toFinale } from './finale'
 
 // Who a player may vote for: anyone else still alive, or Abstain.
 export function voteOptions(state: GameState, playerId: string): string[] {
@@ -78,6 +79,6 @@ export function revealVote(state: GameState): GameState {
     lastVote: { round: state.round, eliminatedId: result.eliminatedId },
     history: [...state.history, { kind: 'vote', round: state.round, eliminatedId: result.eliminatedId, voters }],
   }
-  if (after.phase === 'ended') return after
+  if (after.phase === 'ended') return toFinale(state, after)
   return enterPhase(after, 'night', state.round)
 }

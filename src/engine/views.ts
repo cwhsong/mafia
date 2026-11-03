@@ -53,6 +53,7 @@ export interface PlayerView {
   lastVote: { round: number; eliminatedId: string | null } | null
   vote: VoteView | null            // only during the vote
   history: PublicEntry[]           // the public record (deaths, votes)
+  finale: { round: number; fromPhase: Phase } | null  // during the finale; the winner stays hidden
 }
 
 // The narrator sees the whole game.
@@ -125,6 +126,7 @@ export function playerView(state: GameState, playerId: string): PlayerView {
     lastVote: state.lastVote,
     vote,
     history: [...state.history],
+    finale: state.finale ? { round: state.finale.round, fromPhase: state.finale.fromPhase } : null,
   }
 }
 

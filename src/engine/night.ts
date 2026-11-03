@@ -12,6 +12,7 @@ import { createRng } from './rng'
 import { checkWin } from './win'
 import { eliminate } from './eliminate'
 import { enterPhase } from './phases'
+import { toFinale } from './finale'
 import { ROLES, detectiveSees } from '../roles'
 
 // What a player does at night. Roles without a night action make a decoy "suspect" pick,
@@ -170,6 +171,7 @@ export function resolveNight(state: GameState): GameState {
 }
 
 // Dawn → Day: the narrator reveals. Deaths apply together, then the win check runs.
+// The day opens straight onto discussion and voting.
 export function reveal(state: GameState): GameState {
   assertPhase(state, 'dawn')
   const dawn = state.dawn
@@ -182,6 +184,7 @@ export function reveal(state: GameState): GameState {
     lastNight: { round: dawn.round, deaths: dawn.deaths },
     history: [...state.history, { kind: 'night', round: dawn.round, deaths: dawn.deaths }],
   }
-  if (withSummary.phase === 'ended') return withSummary
-  return enterPhase(withSummary, 'day', state.round + 1)
+  if (withSummary.phase === 'ended') return toFinale(state, withSummary)
+  // From Day 2 on, discussion and voting share one phase
+  return enterPhase(withSummary, 'vote', state.round + 1)
 }

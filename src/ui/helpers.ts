@@ -37,6 +37,8 @@ export function phaseLabel(phase: Phase, round: number): string {
       return `Night ${round}`
     case 'dawn':
       return `Dawn ${round}`
+    case 'finale':
+      return 'Daybreak'
     case 'ended':
       return 'Game over'
   }

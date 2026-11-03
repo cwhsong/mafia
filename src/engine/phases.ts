@@ -15,7 +15,7 @@ export function enterPhase(state: GameState, phase: Phase, round: number): GameS
   const fresh: Partial<GameState> = {}
   if (phase === 'night') Object.assign(fresh, { nightPicks: {}, votes: {}, voteResult: null })
   if (phase === 'day') Object.assign(fresh, { dawn: null, nightPicks: {} })
-  if (phase === 'vote') Object.assign(fresh, { votes: {}, voteResult: null })
+  if (phase === 'vote') Object.assign(fresh, { votes: {}, voteResult: null, dawn: null, nightPicks: {} })
 
   return {
     ...state,

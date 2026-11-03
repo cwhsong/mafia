@@ -78,7 +78,7 @@ export interface LogSection {
   lines: LogLine[]
 }
 
-function publicText(entry: PublicEntry, nameOf: NameOf): string {
+export function publicEntryText(entry: PublicEntry, nameOf: NameOf): string {
   switch (entry.kind) {
     case 'night':
       return lastNightText(entry.deaths, nameOf)
@@ -113,7 +113,7 @@ export function buildLog(history: PublicEntry[], results: PrivateResult[], nameO
   }
   for (const entry of history) {
     const { round, night } = sectionOf(entry)
-    add(round, night, { text: publicText(entry, nameOf), private: false })
+    add(round, night, { text: publicEntryText(entry, nameOf), private: false })
   }
 
   return [...sections.values()]
@@ -159,4 +159,13 @@ export function lastVoteText(eliminatedId: string | null, nameOf: NameOf): strin
 export function gameOverSubtext(myTeam: Team | null, winner: Team): string | null {
   if (!myTeam) return null
   return myTeam === winner ? 'Winner winner chicken dinner.' : 'GGs.'
+}
+
+// Why the game ended, for the narrator's finale.
+export function winReason(winner: Team): string {
+  return winner === 'town'
+    ? 'The last of the Mafia is gone.'
+    : winner === 'mafia'
+      ? 'The Mafia now match the town.'
+      : 'A neutral player got what they wanted.'
 }

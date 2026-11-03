@@ -88,6 +88,8 @@ describe('Firebase transport on the emulator, rules on', () => {
     host.send({ type: 'advance' })
     host.send({ type: 'advance' })
     host.send({ type: 'eliminate', playerIds: [mafioso], cause: 'vote' })
+    await until(() => watches.every((w) => (w.view as PlayerView)?.phase === 'finale'))
+    host.send({ type: 'revealWinner' })
 
     await until(() => watches.every((w) => (w.view as PlayerView)?.phase === 'ended'))
     for (const w of watches) {
@@ -120,12 +122,9 @@ describe('Firebase transport on the emulator, rules on', () => {
     await until(() => watches.every((w) => (w.view as PlayerView).phase === 'dawn'))
     for (let i = 0; i < 5; i++) expect(view(i).messages.length).toBeGreaterThan(0)
 
-    host.send({ type: 'reveal' })
-    await until(() => view(0).phase === 'day' || view(0).phase === 'ended')
-    expect(view(0).lastNight?.deaths).toEqual([target])
-
-    host.send({ type: 'advance' }) // Vote
+    host.send({ type: 'reveal' }) // straight into Day 2's discussion and vote
     await until(() => view(0).phase === 'vote')
+    expect(view(0).lastNight?.deaths).toEqual([target])
     const voters = watches.map((_, i) => i).filter((i) => view(i).me?.alive)
     const mafiaId = view(mafiaIndex).me!.id
     for (const i of voters) {
@@ -135,6 +134,8 @@ describe('Firebase transport on the emulator, rules on', () => {
     host.send({ type: 'closeVote' })
     expect((narrator.view as NarratorView).game.voteResult?.eliminatedId).toBe(mafiaId)
     host.send({ type: 'revealVote' })
+    await until(() => watches.every((w) => (w.view as PlayerView).phase === 'finale'))
+    host.send({ type: 'revealWinner' })
     await until(() => watches.every((w) => (w.view as PlayerView).phase === 'ended'))
     expect(view(0).winner).toBe('town')
   })

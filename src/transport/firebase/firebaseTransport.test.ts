@@ -297,7 +297,11 @@ describe('firebase transport', () => {
     host.send({ type: 'advance' }) // Vote 2
     host.send({ type: 'eliminate', playerIds: mafia, cause: 'vote' })
     await settle()
+    expect((playerWatches[0].view as PlayerView).phase).toBe('finale')
+    expect((playerWatches[0].view as PlayerView).winner).toBeNull()
 
+    host.send({ type: 'revealWinner' })
+    await settle()
     for (const w of playerWatches) {
       const view = w.view as PlayerView
       expect(view.phase).toBe('ended')
