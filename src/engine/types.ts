@@ -111,6 +111,7 @@ export interface GameState {
   selfTargets: Record<string, number>     // times each player has targeted themselves
   votes: Record<string, string>           // this vote: voter id → target id or ABSTAIN
   voteResult: VoteResult | null           // set when the narrator closes the vote
+  lastVote: { round: number; eliminatedId: string | null } | null  // shown the following night
 }
 
 // ---------- Commands (every change to the game is one of these) ----------

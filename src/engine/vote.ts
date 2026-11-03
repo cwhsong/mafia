@@ -69,7 +69,8 @@ export function revealVote(state: GameState): GameState {
   const result = state.voteResult
   if (!result) throw new EngineError('vote-not-closed', 'Close the vote first')
 
-  const after = result.eliminatedId ? eliminate(state, [result.eliminatedId], 'vote') : state
+  const eliminated = result.eliminatedId ? eliminate(state, [result.eliminatedId], 'vote') : state
+  const after: GameState = { ...eliminated, lastVote: { round: state.round, eliminatedId: result.eliminatedId } }
   if (after.phase === 'ended') return after
   return enterPhase(after, 'night', state.round)
 }

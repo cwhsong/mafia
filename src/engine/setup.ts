@@ -22,6 +22,7 @@ export function createGame(hostId: string, seed: number): GameState {
     selfTargets: {},
     votes: {},
     voteResult: null,
+    lastVote: null,
   }
 }
 

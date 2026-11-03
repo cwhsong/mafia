@@ -104,6 +104,7 @@ describe('revealing the vote', () => {
     expect(state.round).toBe(2)
     expect(state.votes).toEqual({})
     expect(state.voteResult).toBeNull()
+    expect(state.lastVote).toEqual({ round: 2, eliminatedId: 'ana' })
     expect(state.log.at(-2)).toEqual({ type: 'eliminated', playerId: 'ana', cause: 'vote' })
   })
 

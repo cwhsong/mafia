@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { playerView, narratorView } from './views'
 import { eliminate } from './eliminate'
+import { applyCommands } from './reduce'
+import { ABSTAIN } from './types'
 import { lobbyWith, setupGame } from './testHelpers'
 
 const cast = {
@@ -70,6 +72,87 @@ describe('playerView', () => {
     const view = playerView(setupGame(cast), 'eve')
     expect(view).not.toHaveProperty('seed')
     expect(view).not.toHaveProperty('log')
+  })
+})
+
+describe('playerView at night', () => {
+  const night = () => applyCommands(setupGame(cast), [{ type: 'advance' }])
+
+  it('gives each living player their action and who they can pick', () => {
+    const view = playerView(night(), 'cal')
+    expect(view.night).toMatchObject({ choice: 'protect', myPick: null })
+    expect(view.night?.targets).toContain('cal')
+  })
+
+  it('gives Villagers the decoy', () => {
+    expect(playerView(night(), 'eve').night?.choice).toBe('suspect')
+  })
+
+  it('shows Mafia their teammates’ picks live, and nobody else', () => {
+    const state = applyCommands(night(), [{ type: 'submitAction', playerId: 'ben', targetId: 'eve' }])
+    expect(playerView(state, 'ana').night?.teamPicks).toEqual([{ playerId: 'ben', name: 'Ben', targetId: 'eve' }])
+    expect(playerView(state, 'cal').night?.teamPicks).toEqual([])
+    expect(JSON.stringify(playerView(state, 'cal'))).not.toContain('targetId')
+  })
+
+  it('shows a player only their own pick', () => {
+    const state = applyCommands(night(), [
+      { type: 'submitAction', playerId: 'dee', targetId: 'ana' },
+      { type: 'submitAction', playerId: 'cal', targetId: 'eve' },
+    ])
+    expect(playerView(state, 'dee').night?.myPick).toBe('ana')
+    expect(JSON.stringify(playerView(state, 'dee'))).not.toContain('nightPicks')
+  })
+
+  it('gives the dead no night action', () => {
+    const state = applyCommands(setupGame(cast), [
+      { type: 'eliminate', playerIds: ['gus'], cause: 'host' },
+      { type: 'advance' },
+    ])
+    expect(playerView(state, 'gus').night).toBeNull()
+  })
+
+  it('shows only your own dawn messages', () => {
+    const state = applyCommands(night(), [
+      { type: 'submitAction', playerId: 'dee', targetId: 'ben' },
+      { type: 'resolveNight' },
+    ])
+    expect(playerView(state, 'dee').messages).toEqual([
+      { kind: 'investigated', round: 1, targetId: 'ben', result: 'mafia' },
+    ])
+    expect(JSON.stringify(playerView(state, 'eve'))).not.toContain('investigated')
+  })
+
+  it('shows everyone who died last night', () => {
+    const state = applyCommands(night(), [
+      { type: 'submitAction', playerId: 'ana', targetId: 'eve' },
+      { type: 'resolveNight' },
+      { type: 'reveal' },
+    ])
+    expect(playerView(state, 'fay').lastNight).toEqual({ round: 1, deaths: ['eve'] })
+  })
+})
+
+describe('playerView during the vote', () => {
+  const voting = () =>
+    applyCommands(setupGame(cast), [
+      { type: 'advance' }, { type: 'resolveNight' }, { type: 'reveal' }, { type: 'advance' },
+      { type: 'castVote', playerId: 'eve', targetId: 'ana' },
+      { type: 'castVote', playerId: 'fay', targetId: ABSTAIN },
+    ])
+
+  it('shows the public tally and who has not voted', () => {
+    const view = playerView(voting(), 'gus').vote
+    expect(view?.votes).toEqual({ eve: 'ana', fay: ABSTAIN })
+    expect(view?.notVoted).toEqual(['ana', 'ben', 'cal', 'dee', 'gus'])
+    expect(view?.closed).toBe(false)
+  })
+
+  it('does not show the result before the narrator reveals it', () => {
+    const state = applyCommands(voting(), [{ type: 'closeVote' }])
+    const view = playerView(state, 'gus')
+    expect(view.vote?.closed).toBe(true)
+    expect(JSON.stringify(view)).not.toContain('eliminatedId')
   })
 })
 

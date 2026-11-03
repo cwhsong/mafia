@@ -1,5 +1,7 @@
-import type { GameState, Phase, Team } from './types'
+import type { GameState, Phase, PrivateResult, Team } from './types'
 import { ROLES } from '../roles'
+import { eligibleTargets, nightChoice, type NightChoice } from './night'
+import { voteOptions } from './vote'
 
 // What everyone at the table may know about a player.
 export interface PublicPlayer {
@@ -17,6 +19,23 @@ export interface Teammate {
   alive: boolean
 }
 
+// A living player's night screen.
+export interface NightView {
+  choice: NightChoice
+  targets: string[]          // who they may pick, in seat order
+  myPick: string | null
+  teamPicks: { playerId: string; name: string; targetId: string }[]  // Mafia only: teammates' picks, live
+}
+
+// The vote, which is public, as in pointing around the table.
+export interface VoteView {
+  closed: boolean            // closed: waiting for the narrator to reveal
+  options: string[]          // who I may vote for (ends with ABSTAIN); empty if I'm out
+  myVote: string | null
+  votes: Record<string, string>  // voter id → target id or ABSTAIN
+  notVoted: string[]         // living players who haven't voted (they count as Abstain)
+}
+
 // Everything one player's phone is allowed to show.
 export interface PlayerView {
   kind: 'player'
@@ -28,6 +47,11 @@ export interface PlayerView {
   me: (PublicPlayer & { roleId: string | null }) | null  // null if not in this game
   teammates: Teammate[]            // empty unless you are Mafia
   revealedRoles: Record<string, string> | null  // every role, only once the game has ended
+  night: NightView | null          // only at night, only while alive
+  messages: PrivateResult[]        // my private dawn messages, oldest first
+  lastNight: { round: number; deaths: string[] } | null
+  lastVote: { round: number; eliminatedId: string | null } | null
+  vote: VoteView | null            // only during the vote
 }
 
 // The narrator sees the whole game.
@@ -59,6 +83,29 @@ export function playerView(state: GameState, playerId: string): PlayerView {
       ? Object.fromEntries(state.players.map((p) => [p.id, p.roleId ?? '']))
       : null
 
+  const choice = state.phase === 'night' ? nightChoice(state, playerId) : null
+  const night: NightView | null = choice
+    ? {
+        choice,
+        targets: eligibleTargets(state, playerId),
+        myPick: state.nightPicks[playerId] ?? null,
+        teamPicks: teammates
+          .filter((t) => t.alive && state.nightPicks[t.id])
+          .map((t) => ({ playerId: t.id, name: t.name, targetId: state.nightPicks[t.id] })),
+      }
+    : null
+
+  const vote: VoteView | null =
+    state.phase === 'vote'
+      ? {
+          closed: state.voteResult !== null,
+          options: voteOptions(state, playerId),
+          myVote: state.votes[playerId] ?? null,
+          votes: { ...state.votes },
+          notVoted: state.players.filter((p) => p.alive && !state.votes[p.id]).map((p) => p.id),
+        }
+      : null
+
   return {
     kind: 'player',
     phase: state.phase,
@@ -71,6 +118,11 @@ export function playerView(state: GameState, playerId: string): PlayerView {
       : null,
     teammates,
     revealedRoles,
+    night,
+    messages: [...(state.results[playerId] ?? [])],
+    lastNight: state.lastNight,
+    lastVote: state.lastVote,
+    vote,
   }
 }
 
