@@ -3,6 +3,7 @@ import { browserChannels, roomChannelName, type ChannelFactory, type RoomMessage
 import { createHostRoom } from './hostRoom'
 import { generateRoomCode } from './roomCode'
 import { JoinError, type RoomConnection, type RoomEvent, type RoomTransport } from './types'
+import { playerMaySend, NOT_ALLOWED } from './permissions'
 
 interface LocalTransportOptions {
   playerId: string
@@ -60,11 +61,13 @@ export function createLocalTransport(options: LocalTransportOptions): RoomTransp
             if (latest) listener(latest)
             return () => listeners.delete(listener)
           },
-          send() {
-            // Players have no commands yet. Phase 4 adds night actions and votes.
-            for (const listener of listeners) {
-              listener({ type: 'error', code: 'not-allowed', message: 'Only the narrator can do that.' })
+          send(command) {
+            // Players send only their own night pick or vote; the narrator's tab checks it too.
+            if (!playerMaySend(command, playerId)) {
+              for (const listener of listeners) listener({ type: 'error', ...NOT_ALLOWED })
+              return
             }
+            channel.post({ kind: 'command', playerId, command })
           },
           leave() {
             channel.post({ kind: 'leave', playerId })
@@ -101,6 +104,11 @@ export function createLocalTransport(options: LocalTransportOptions): RoomTransp
           }
           if (message.kind === 'removed') {
             emit({ type: 'closed', reason: 'removed' })
+          }
+          if (message.kind === 'error') {
+            for (const listener of listeners) {
+              listener({ type: 'error', code: message.code, message: message.message })
+            }
           }
         })
 

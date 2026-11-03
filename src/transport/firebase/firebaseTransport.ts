@@ -8,10 +8,11 @@ import {
   type Command,
   type GameState,
 } from '../../engine'
+import type { PlayerView } from '../../engine'
 import { generateRoomCode } from '../roomCode'
 import { JoinError, type RoomConnection, type RoomEvent, type RoomTransport } from '../types'
+import { playerMaySend, NOT_ALLOWED } from '../permissions'
 import type { Db } from './db'
-import { normalizeGameState, normalizePlayerView } from './normalize'
 
 /*
   Database layout for one room (rules in database.rules.json):
@@ -19,10 +20,13 @@ import { normalizeGameState, normalizePlayerView } from './normalize'
   rooms/{CODE}/
     meta       { hostUid, hostName, createdAt }   any signed-in user can read
     closed     true once the narrator closes it    any signed-in user can read
-    host/state the full GameState, seed included   narrator only
-    views/{uid}    that player's PlayerView        that player + narrator
-    requests/{uid} { type: 'join'|'leave', name }  written by that player, read by narrator
-    notices/{uid}  { kind: 'rejected'|'removed' }  that player + narrator
+    host/state the full GameState as JSON text     narrator only (it includes the seed)
+    views/{uid}    that player's PlayerView as JSON text   that player + narrator
+    requests/{uid}/{id}  join, leave, or a command  written by that player, read by narrator
+    notices/{uid}  { kind: 'rejected'|'removed'|'error' }  that player + narrator
+
+  Game data is stored as JSON text so it comes back exactly as saved
+  (Firebase would otherwise drop nulls and empty lists).
 */
 
 export const ROOM_LIFETIME_MS = 24 * 60 * 60 * 1000
@@ -34,14 +38,21 @@ interface Meta {
 }
 
 interface Request {
-  type: 'join' | 'leave'
+  type: 'join' | 'leave' | 'command'
   name?: string
+  command?: string // JSON text of a Command
 }
 
 interface Notice {
-  kind: 'rejected' | 'removed'
+  kind: 'rejected' | 'removed' | 'error'
   code?: string
   message?: string
+  at?: number
+}
+
+// Request ids sort in the order they were made.
+function requestId(): string {
+  return `${Date.now().toString(36).padStart(9, '0')}${Math.random().toString(36).slice(2, 8)}`
 }
 
 interface FirebaseTransportOptions {
@@ -97,9 +108,9 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
 
     // Saves the game and every player's view in one write.
     function publish(extra: Record<string, unknown> = {}) {
-      const updates: Record<string, unknown> = { [`${base}/host/state`]: state, ...extra }
+      const updates: Record<string, unknown> = { [`${base}/host/state`]: JSON.stringify(state), ...extra }
       for (const player of state.players) {
-        updates[`${base}/views/${player.id}`] = playerView(state, player.id)
+        updates[`${base}/views/${player.id}`] = JSON.stringify(playerView(state, player.id))
       }
       emit({ type: 'view', view: narratorView(state), hostName })
       db.update(updates).catch(reportWriteError)
@@ -118,8 +129,33 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       publish({ ...removed, ...extra })
     }
 
-    function handleRequest(uid: string, request: Request) {
-      const consumed = { [`${base}/requests/${uid}`]: null }
+    function handleRequest(uid: string, id: string, request: Request) {
+      const consumed = { [`${base}/requests/${uid}/${id}`]: null }
+      const tellPlayer = (code: string, message: string) =>
+        db
+          .update({ ...consumed, [`${base}/notices/${uid}`]: { kind: 'error', code, message, at: Date.now() } })
+          .catch(reportWriteError)
+
+      if (request.type === 'command') {
+        let command: Command
+        try {
+          command = JSON.parse(String(request.command)) as Command
+        } catch {
+          tellPlayer('unknown-command', 'That request couldn’t be read.')
+          return
+        }
+        if (!playerMaySend(command, uid)) {
+          tellPlayer(NOT_ALLOWED.code, NOT_ALLOWED.message)
+          return
+        }
+        try {
+          apply(command, consumed)
+        } catch (error) {
+          if (!(error instanceof EngineError)) throw error
+          tellPlayer(error.code, error.message)
+        }
+        return
+      }
 
       if (request.type === 'join') {
         if (state.players.some((p) => p.id === uid)) {
@@ -149,10 +185,20 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       }
     }
 
+    // Each request is handled once, in the order it was made, then deleted.
+    const handled = new Set<string>()
     const stopRequests = db.onValue(`${base}/requests`, (value) => {
       if (!value) return
-      for (const [uid, request] of Object.entries(value as Record<string, Request>)) {
-        handleRequest(uid, request)
+      const queue: [string, string, Request][] = []
+      for (const [uid, requests] of Object.entries(value as Record<string, Record<string, Request>>)) {
+        for (const [id, request] of Object.entries(requests ?? {})) queue.push([uid, id, request])
+      }
+      queue.sort((a, b) => (a[1] < b[1] ? -1 : 1))
+      for (const [uid, id, request] of queue) {
+        const key = `${uid}/${id}`
+        if (handled.has(key)) continue
+        handled.add(key)
+        handleRequest(uid, id, request)
       }
     })
 
@@ -220,15 +266,22 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
           if (latest) listener(latest)
           return () => listeners.delete(listener)
         },
-        send() {
-          for (const listener of listeners) {
-            listener({ type: 'error', code: 'not-allowed', message: 'Only the narrator can do that.' })
+        send(command) {
+          if (!playerMaySend(command, uid)) {
+            for (const listener of listeners) listener({ type: 'error', ...NOT_ALLOWED })
+            return
           }
+          const request: Request = { type: 'command', command: JSON.stringify(command) }
+          db.set(`${base}/requests/${uid}/${requestId()}`, request).catch(() => {
+            for (const listener of listeners) {
+              listener({ type: 'error', code: 'offline', message: 'Couldn’t send that. Check your connection.' })
+            }
+          })
         },
         leave() {
           stopAll()
           listeners.clear()
-          db.set(`${base}/requests/${uid}`, { type: 'leave' } satisfies Request).catch(() => {})
+          db.set(`${base}/requests/${uid}/${requestId()}`, { type: 'leave' } satisfies Request).catch(() => {})
         },
       }
 
@@ -239,8 +292,8 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       function listen() {
         stops.push(
           db.onValue(`${base}/views/${uid}`, (value) => {
-            if (!value) return
-            emit({ type: 'view', view: normalizePlayerView(value), hostName })
+            if (typeof value !== 'string') return
+            emit({ type: 'view', view: JSON.parse(value) as PlayerView, hostName })
             if (!joined && !finished) {
               joined = true
               clearTimeout(timer)
@@ -255,6 +308,10 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
             } else if (notice.kind === 'removed' && joined) {
               stopAll()
               emit({ type: 'closed', reason: 'removed' })
+            } else if (notice.kind === 'error' && joined) {
+              for (const listener of listeners) {
+                listener({ type: 'error', code: notice.code ?? 'error', message: notice.message ?? 'Something went wrong.' })
+              }
             }
           }),
           db.onValue(`${base}/closed`, (value) => {
@@ -273,7 +330,7 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       db.set(`${base}/notices/${uid}`, null)
         .then(() => {
           listen()
-          return db.set(`${base}/requests/${uid}`, { type: 'join', name } satisfies Request)
+          return db.set(`${base}/requests/${uid}/${requestId()}`, { type: 'join', name } satisfies Request)
         })
         .catch(() => fail(new JoinError('offline', 'Couldn’t reach the server. Check your connection.')))
     })
@@ -300,7 +357,7 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
         try {
           await db.set(roomPath(code), {
             meta: { hostUid: uid, hostName, createdAt: db.serverTime() },
-            host: { state },
+            host: { state: JSON.stringify(state) },
           })
         } catch {
           continue // someone else got this code first
@@ -317,7 +374,9 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
       if (!meta || closed || meta.hostUid !== uid) {
         throw new JoinError('room-not-found', `Room ${code} is no longer available.`)
       }
-      const state = normalizeGameState(await db.get(`${roomPath(code)}/host/state`))
+      const saved = await db.get(`${roomPath(code)}/host/state`)
+      if (typeof saved !== 'string') throw new JoinError('room-not-found', `Room ${code} is no longer available.`)
+      const state = JSON.parse(saved) as GameState
       return startHost(code, meta.hostName, state)
     }),
 

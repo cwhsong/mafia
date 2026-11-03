@@ -39,6 +39,12 @@ function setup() {
 const SEVEN = ['mafioso', 'mafioso', 'medic', 'detective', 'villager', 'villager', 'villager']
 const NAMES = ['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay', 'Gus']
 
+function dealAndStartNight(host: RoomConnection) {
+  host.send({ type: 'setRoleSlots', slots: SEVEN })
+  host.send({ type: 'deal' })
+  host.send({ type: 'advance' })
+}
+
 async function fullRoom() {
   const device = setup()
   const host = await device('host').host('Chisp')
@@ -140,10 +146,43 @@ describe('local transport', () => {
     expect(hostWatch.last).toMatchObject({ type: 'error', code: 'invalid-setup' })
   })
 
-  it('does not let players send commands', async () => {
+  it('does not let players send narrator commands', async () => {
     const { players, playerWatches } = await fullRoom()
     players[0].send({ type: 'deal' })
     expect(playerWatches[0].last).toMatchObject({ type: 'error', code: 'not-allowed' })
+  })
+
+  it('does not let a player act for someone else', async () => {
+    const { players, playerWatches } = await fullRoom()
+    players[0].send({ type: 'submitAction', playerId: 'ben', targetId: 'cal' })
+    expect(playerWatches[0].last).toMatchObject({ type: 'error', code: 'not-allowed' })
+  })
+
+  it('takes players’ night picks and shows Mafia each other’s', async () => {
+    const { host, hostWatch, players, playerWatches } = await fullRoom()
+    dealAndStartNight(host)
+    await settle()
+    const views = playerWatches.map((w) => w.view as PlayerView)
+    const mafiaIndexes = views.flatMap((v, i) => (v.me?.roleId === 'mafioso' ? [i] : []))
+    const [first, second] = mafiaIndexes
+    const target = views[first].night!.targets[0]
+
+    players[first].send({ type: 'submitAction', playerId: views[first].me!.id, targetId: target })
+    await settle()
+    expect((hostWatch.view as NarratorView).game.nightPicks[views[first].me!.id]).toBe(target)
+    expect((playerWatches[second].view as PlayerView).night?.teamPicks).toEqual([
+      { playerId: views[first].me!.id, name: views[first].me!.name, targetId: target },
+    ])
+  })
+
+  it('tells a player when their pick is refused', async () => {
+    const { host, players, playerWatches } = await fullRoom()
+    dealAndStartNight(host)
+    await settle()
+    const me = (playerWatches[0].view as PlayerView).me!
+    players[0].send({ type: 'submitAction', playerId: me.id, targetId: 'nobody' })
+    await settle()
+    expect(playerWatches[0].last).toMatchObject({ type: 'error', code: 'invalid-target' })
   })
 
   it('frees a lobby seat when a player leaves', async () => {

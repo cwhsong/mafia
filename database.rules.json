@@ -29,8 +29,10 @@
         "requests": {
           ".read": "auth != null && root.child('rooms').child($code).child('meta/hostUid').val() === auth.uid",
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($code).child('meta').exists()",
-            ".validate": "newData.child('type').val() === 'leave' || (newData.child('type').val() === 'join' && newData.child('name').isString() && newData.child('name').val().length <= 24)"
+            "$requestId": {
+              ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($code).child('meta').exists()",
+              ".validate": "newData.child('type').val() === 'leave' || (newData.child('type').val() === 'join' && newData.child('name').isString() && newData.child('name').val().length <= 24) || (newData.child('type').val() === 'command' && newData.child('command').isString() && newData.child('command').val().length <= 500)"
+            }
           }
         },
         "notices": {

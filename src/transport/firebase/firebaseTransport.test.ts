@@ -147,7 +147,7 @@ describe('firebase transport', () => {
 
     const room = (db.dump() as { rooms: Record<string, Record<string, unknown>> }).rooms.KXQRTZ
     expect(JSON.stringify(room.views)).not.toContain('"seed"')
-    expect((room.host as { state: { seed: number } }).state.seed).toBe(2026)
+    expect(JSON.parse((room.host as { state: string }).state).seed).toBe(2026)
   })
 
   it('shows Mafia their teammate', async () => {
@@ -167,6 +167,64 @@ describe('firebase transport', () => {
       code: 'wrong-phase',
       message: 'This game has already started.',
     })
+  })
+
+  it('takes players’ night picks through the request queue', async () => {
+    const { db, host, hostWatch, players, playerWatches } = await fullRoom()
+    dealt(host)
+    host.send({ type: 'advance' })
+    await settle()
+    const views = playerWatches.map((w) => w.view as PlayerView)
+    const i = views.findIndex((v) => v.me?.roleId === 'detective')
+    const target = views[i].night!.targets[0]
+
+    players[i].send({ type: 'submitAction', playerId: views[i].me!.id, targetId: target })
+    await settle()
+    expect((hostWatch.view as NarratorView).game.nightPicks[views[i].me!.id]).toBe(target)
+    expect((playerWatches[i].view as PlayerView).night?.myPick).toBe(target)
+    // the request was used up
+    expect((db.dump() as { rooms: Record<string, { requests?: unknown }> }).rooms.KXQRTZ.requests).toBeUndefined()
+  })
+
+  it('handles several quick changes of mind in order', async () => {
+    const { host, hostWatch, players, playerWatches } = await fullRoom()
+    dealt(host)
+    host.send({ type: 'advance' })
+    await settle()
+    const me = (playerWatches[0].view as PlayerView).me!
+    const [a, b] = (playerWatches[0].view as PlayerView).night!.targets
+    players[0].send({ type: 'submitAction', playerId: me.id, targetId: a })
+    players[0].send({ type: 'submitAction', playerId: me.id, targetId: b })
+    await settle()
+    expect((hostWatch.view as NarratorView).game.nightPicks[me.id]).toBe(b)
+  })
+
+  it('tells a player when their pick is refused, and refuses acting for others', async () => {
+    const { host, players, playerWatches } = await fullRoom()
+    dealt(host)
+    host.send({ type: 'advance' })
+    await settle()
+    const me = (playerWatches[0].view as PlayerView).me!
+    players[0].send({ type: 'submitAction', playerId: me.id, targetId: 'nobody' })
+    await settle()
+    expect(playerWatches[0].last).toMatchObject({ type: 'error', code: 'invalid-target' })
+
+    players[0].send({ type: 'submitAction', playerId: 'someone-else', targetId: 'ana' })
+    expect(playerWatches[0].last).toMatchObject({ type: 'error', code: 'not-allowed' })
+  })
+
+  it('refuses a forged request for another player', async () => {
+    const { db, host, hostWatch } = await fullRoom()
+    dealt(host)
+    host.send({ type: 'advance' })
+    await settle()
+    // Ana writes (under her own id, as the rules require) a command claiming to be Ben
+    await db.set('rooms/KXQRTZ/requests/ana/x1', {
+      type: 'command',
+      command: JSON.stringify({ type: 'submitAction', playerId: 'ben', targetId: 'cal' }),
+    })
+    await settle()
+    expect((hostWatch.view as NarratorView).game.nightPicks.ben).toBeUndefined()
   })
 
   it('reports engine errors to the narrator', async () => {

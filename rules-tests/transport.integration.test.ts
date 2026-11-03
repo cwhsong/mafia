@@ -97,6 +97,48 @@ describe('Firebase transport on the emulator, rules on', () => {
     }
   })
 
+  it('runs a night and a vote from players’ phones', async () => {
+    const host = await device('narrator').host('Chisp')
+    const narrator = watch(host)
+    const players: RoomConnection[] = []
+    for (const name of NAMES) players.push(await device(name.toLowerCase()).join(host.code, name))
+    const watches = players.map(watch)
+    await until(() => (narrator.view as NarratorView).game.players.length === 5)
+
+    host.send({ type: 'setRoleSlots', slots: FIVE })
+    host.send({ type: 'deal' })
+    host.send({ type: 'advance' }) // Night 1
+    await until(() => watches.every((w) => (w.view as PlayerView)?.night))
+
+    const view = (i: number) => watches[i].view as PlayerView
+    const mafiaIndex = watches.findIndex((_, i) => view(i).me?.roleId === 'mafioso')
+    const target = view(mafiaIndex).night!.targets[0]
+    players[mafiaIndex].send({ type: 'submitAction', playerId: view(mafiaIndex).me!.id, targetId: target })
+    await until(() => !!(narrator.view as NarratorView).game.nightPicks[view(mafiaIndex).me!.id])
+
+    host.send({ type: 'resolveNight' })
+    await until(() => watches.every((w) => (w.view as PlayerView).phase === 'dawn'))
+    for (let i = 0; i < 5; i++) expect(view(i).messages.length).toBeGreaterThan(0)
+
+    host.send({ type: 'reveal' })
+    await until(() => view(0).phase === 'day' || view(0).phase === 'ended')
+    expect(view(0).lastNight?.deaths).toEqual([target])
+
+    host.send({ type: 'advance' }) // Vote
+    await until(() => view(0).phase === 'vote')
+    const voters = watches.map((_, i) => i).filter((i) => view(i).me?.alive)
+    const mafiaId = view(mafiaIndex).me!.id
+    for (const i of voters) {
+      if (i !== mafiaIndex) players[i].send({ type: 'castVote', playerId: view(i).me!.id, targetId: mafiaId })
+    }
+    await until(() => Object.keys((narrator.view as NarratorView).game.votes).length === voters.length - 1)
+    host.send({ type: 'closeVote' })
+    expect((narrator.view as NarratorView).game.voteResult?.eliminatedId).toBe(mafiaId)
+    host.send({ type: 'revealVote' })
+    await until(() => watches.every((w) => (w.view as PlayerView).phase === 'ended'))
+    expect(view(0).winner).toBe('town')
+  })
+
   it('keeps empty lists and missing values working after a round trip', async () => {
     const host = await device('narrator').host('Chisp')
     const ana = watch(await device('ana').join(host.code, 'Ana'))
