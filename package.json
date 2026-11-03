@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only database --project demo-mafia \"vitest run --config vitest.rules.config.ts\"",
+    "emulators": "firebase emulators:start --only auth,database --project demo-mafia",
+    "dev:firebase": "vite --mode emulator"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",

@@ -20,6 +20,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build # type-checks the whole app, so PRs catch type errors too
+      - uses: actions/setup-java@v6 # the Firebase database emulator runs on Java
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm run test:rules # security rules, against the Firebase emulator
 
   deploy:
     needs: test
