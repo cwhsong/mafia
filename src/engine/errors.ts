@@ -12,6 +12,11 @@ export type EngineErrorCode =
   | 'invalid-setup'
   | 'already-dead'
   | 'unknown-command'
+  | 'not-alive'
+  | 'invalid-target'
+  | 'no-dawn'
+  | 'vote-closed'
+  | 'vote-not-closed'
 
 export class EngineError extends Error {
   code: EngineErrorCode

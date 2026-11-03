@@ -12,6 +12,7 @@ export const medic: RoleDef = {
     kind: 'protect',
     priority: PRIORITY.protect,
     canTargetSelf: true,
+    selfUses: 1, // once per game, as in Town of Salem
   },
   available: true,
 }
