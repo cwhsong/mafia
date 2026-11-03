@@ -93,6 +93,15 @@ export interface VoteResult {
   endsGame: Team | null
 }
 
+// ---------- Public record ----------
+
+// Things everyone at the table saw happen, in order. Players' logs are built from these
+// plus their own private results.
+export type PublicEntry =
+  | { kind: 'night'; round: number; deaths: string[] }
+  | { kind: 'vote'; round: number; eliminatedId: string | null; voters: string[] }  // voters: who voted them out
+  | { kind: 'narrator-eliminated'; round: number; phase: Phase; playerIds: string[] }
+
 // ---------- Whole game ----------
 
 export interface GameState {
@@ -112,6 +121,7 @@ export interface GameState {
   votes: Record<string, string>           // this vote: voter id → target id or ABSTAIN
   voteResult: VoteResult | null           // set when the narrator closes the vote
   lastVote: { round: number; eliminatedId: string | null } | null  // shown the following night
+  history: PublicEntry[]                  // the public record of the game
 }
 
 // ---------- Commands (every change to the game is one of these) ----------

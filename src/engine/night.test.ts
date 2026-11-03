@@ -195,6 +195,7 @@ describe('reveal', () => {
     expect(state.round).toBe(2)
     expect(state.players.find((p) => p.id === 'eve')?.alive).toBe(false)
     expect(state.lastNight).toEqual({ round: 1, deaths: ['eve'] })
+    expect(state.history).toEqual([{ kind: 'night', round: 1, deaths: ['eve'] }])
     expect(state.dawn).toBeNull()
     expect(state.nightPicks).toEqual({})
   })

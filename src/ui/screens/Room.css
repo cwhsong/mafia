@@ -322,14 +322,10 @@
 }
 
 .log {
-  margin: 0;
-  padding-left: var(--space-5);
-  color: var(--muted);
-  font-size: 15px;
-}
-
-.log li + li {
-  margin-top: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .warning {
@@ -353,4 +349,28 @@ details.tools > summary {
   cursor: pointer;
   color: var(--muted);
   font-size: 15px;
+}
+
+/* Your log */
+.log-section + .log-section {
+  margin-top: var(--space-3);
+}
+
+.log-heading {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.log-section p:not(.log-heading) {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.log-private {
+  border-left: 2px solid var(--dawn);
+  padding-left: var(--space-2);
 }

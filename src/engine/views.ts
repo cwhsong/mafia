@@ -1,4 +1,4 @@
-import type { GameState, Phase, PrivateResult, Team } from './types'
+import type { GameState, Phase, PrivateResult, PublicEntry, Team } from './types'
 import { ROLES } from '../roles'
 import { eligibleTargets, nightChoice, type NightChoice } from './night'
 import { voteOptions } from './vote'
@@ -52,6 +52,7 @@ export interface PlayerView {
   lastNight: { round: number; deaths: string[] } | null
   lastVote: { round: number; eliminatedId: string | null } | null
   vote: VoteView | null            // only during the vote
+  history: PublicEntry[]           // the public record (deaths, votes)
 }
 
 // The narrator sees the whole game.
@@ -123,6 +124,7 @@ export function playerView(state: GameState, playerId: string): PlayerView {
     lastNight: state.lastNight,
     lastVote: state.lastVote,
     vote,
+    history: [...state.history],
   }
 }
 

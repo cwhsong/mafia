@@ -3,6 +3,7 @@ import { ROLES } from '../../roles'
 import { RoomHeader } from '../components/RoomHeader'
 import { countRoles } from '../helpers'
 import type { InRoomState, RoomSession } from '../roomSession'
+import { LeaveButton } from '../components/LeaveButton'
 
 interface Props {
   session: RoomSession
@@ -60,9 +61,7 @@ export function PlayerLobby({ session, state, view }: Props) {
         </section>
       )}
 
-      <button type="button" className="btn btn-quiet" onClick={session.leave}>
-        Leave room
-      </button>
+      <LeaveButton label="Leave room" onConfirm={session.leave} />
     </div>
   )
 }

@@ -6,7 +6,8 @@ import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, type PickOption } from '../components/PickList'
 import { phaseLabel, nextPhaseLabel, causeForPhase, winnerLabel } from '../helpers'
-import { beatText, lastNightText, lastVoteText } from '../text'
+import { beatText, joinNames, lastNightText, lastVoteText } from '../text'
+import { LeaveButton } from '../components/LeaveButton'
 import type { InRoomState, RoomSession } from '../roomSession'
 
 interface Props {
@@ -63,16 +64,15 @@ function EliminateTool({ session, game, nameOf }: { session: RoomSession; game: 
   }
 
   return (
-    <details className="tools">
-      <summary>Narrator tools: eliminate a player by hand</summary>
-      <div className="stack" style={{ marginTop: 'var(--space-3)' }}>
-        <p className="hint">For edge cases, like someone having to leave. Tap names to select them.</p>
+    <section className="stack">
+      <p className="section-label">Eliminate a player</p>
+      <p className="hint">For edge cases, like someone having to leave. Tap names to select them.</p>
         <PickList options={options} selectedIds={selected} onToggle={toggle} />
         {selected.length > 0 &&
           (confirming ? (
             <div className="row">
               <button type="button" className="btn btn-danger" onClick={eliminate}>
-                Yes, eliminate {selected.map(nameOf).join(' and ')} ({causeText})
+                Yes, eliminate {joinNames(selected.map(nameOf))} ({causeText})
               </button>
               <button type="button" className="btn" onClick={() => setConfirming(false)}>
                 Cancel
@@ -83,6 +83,17 @@ function EliminateTool({ session, game, nameOf }: { session: RoomSession; game: 
               Eliminate {selected.length === 1 ? 'player' : `${selected.length} players`}
             </button>
           ))}
+    </section>
+  )
+}
+
+// A dropdown for occasional narrator controls; more tools will join it later.
+function NarratorTools({ session, game, nameOf }: { session: RoomSession; game: GameState; nameOf: NameOf }) {
+  return (
+    <details className="tools">
+      <summary>Narrator tools</summary>
+      <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
+        <EliminateTool session={session} game={game} nameOf={nameOf} />
       </div>
     </details>
   )
@@ -114,7 +125,7 @@ function NightPanel({ session, game, nameOf }: { session: RoomSession; game: Gam
       {confirming ? (
         <div className="stack">
           <p className="warning">
-            End the night anyway? {missing.map((p) => nameOf(p.id)).join(' and ')} {missing.length === 1 ? 'hasn’t' : 'haven’t'} chosen.
+            End the night anyway? {joinNames(missing.map((p) => nameOf(p.id)))} {missing.length === 1 ? 'hasn’t' : 'haven’t'} chosen.
           </p>
           <div className="row">
             <button type="button" className="btn btn-primary" onClick={end}>
@@ -285,9 +296,7 @@ export function NarratorGame({ session, state, game }: Props) {
       <div className="room">
         <RoomHeader code={state.code} />
         <GameOver winner={game.winner} players={game.players.map((p) => ({ ...p, roleId: p.roleId ?? '' }))} />
-        <button type="button" className="btn btn-quiet" onClick={session.leave}>
-          Close room
-        </button>
+        <LeaveButton label="Close room" warning="Everyone will be sent back to the start." onConfirm={session.leave} />
       </div>
     )
   }
@@ -324,11 +333,9 @@ export function NarratorGame({ session, state, game }: Props) {
         <Deal game={game} />
       </section>
 
-      <EliminateTool session={session} game={game} nameOf={nameOf} />
+      <NarratorTools session={session} game={game} nameOf={nameOf} />
 
-      <button type="button" className="btn btn-quiet" onClick={session.leave}>
-        Close room
-      </button>
+      <LeaveButton label="Close room" warning="This ends the game for everyone." onConfirm={session.leave} />
     </div>
   )
 }

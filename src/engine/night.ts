@@ -180,6 +180,7 @@ export function reveal(state: GameState): GameState {
     ...afterDeaths,
     dawn: null,
     lastNight: { round: dawn.round, deaths: dawn.deaths },
+    history: [...state.history, { kind: 'night', round: dawn.round, deaths: dawn.deaths }],
   }
   if (withSummary.phase === 'ended') return withSummary
   return enterPhase(withSummary, 'day', state.round + 1)

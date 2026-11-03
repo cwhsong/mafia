@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  beatText, gameOverSubtext, lastNightText, lastVoteText, logText, messageText, nightSubtext,
+  beatText, buildLog, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT,
 } from './text'
 
 const names: Record<string, string> = { ana: 'Ana', ben: 'Ben', cal: 'Cal', dee: 'Dee', fay: 'Fay' }
@@ -25,13 +25,13 @@ describe('private messages', () => {
     expect(messageText({ kind: 'was-saved', round: 1 }, nameOf)).toBe('You were attacked last night, but someone saved you.')
     expect(messageText({ kind: 'mafia-chose', round: 1, targetId: 'cal' }, nameOf)).toBe('The Mafia chose Cal.')
     expect(messageText({ kind: 'mafia-chose', round: 1, targetId: null }, nameOf)).toBe('The Mafia didn’t choose anyone.')
-    expect(messageText({ kind: 'slept', round: 1, suspectedId: 'ben' }, nameOf)).toBe('You slept through the night.')
+    expect(QUIET_NIGHT).toContain(messageText({ kind: 'slept', round: 1, suspectedId: 'ben' }, nameOf))
     expect(messageText({ kind: 'no-pick', round: 1, action: 'protect' }, nameOf)).toBe('You didn’t protect anyone.')
   })
 
-  it('keeps a Villager’s suspicion in their log, but not in the dawn message', () => {
-    const slept = { kind: 'slept', round: 1, suspectedId: 'ben' } as const
-    expect(logText(slept, nameOf)).toBe('You slept through the night. You suspected Ben.')
+  it('varies the quiet-night line from night to night', () => {
+    const lines = [1, 2, 3, 4].map((round) => messageText({ kind: 'slept', round, suspectedId: null }, nameOf))
+    expect(new Set(lines).size).toBe(4)
   })
 })
 
@@ -53,11 +53,51 @@ describe('the narrator’s story', () => {
   })
 })
 
+describe('your log', () => {
+  it('groups public events and private results by day and night, oldest first', () => {
+    const log = buildLog(
+      [
+        { kind: 'night', round: 1, deaths: ['ana'] },
+        { kind: 'vote', round: 2, eliminatedId: 'dee', voters: ['ben', 'cal', 'fay'] },
+        { kind: 'night', round: 2, deaths: [] },
+      ],
+      [
+        { kind: 'investigated', round: 1, targetId: 'dee', result: 'mafia' },
+        { kind: 'investigated', round: 2, targetId: 'cal', result: 'not-mafia' },
+      ],
+      nameOf,
+    )
+    expect(log).toEqual([
+      { heading: 'Night 1', lines: [{ text: 'Dee is Mafia.', private: true }, { text: 'Ana was killed in the night.', private: false }] },
+      { heading: 'Day 2', lines: [{ text: 'Dee was voted out (Ben, Cal, Fay).', private: false }] },
+      { heading: 'Night 2', lines: [{ text: 'Cal is not Mafia.', private: true }, { text: 'Nobody died last night.', private: false }] },
+    ])
+  })
+
+  it('leaves out quiet-night filler and suspicions', () => {
+    const log = buildLog([], [{ kind: 'slept', round: 1, suspectedId: 'ben' }], nameOf)
+    expect(log).toEqual([])
+  })
+
+  it('records the narrator removing someone and a vote where nobody went out', () => {
+    const log = buildLog(
+      [
+        { kind: 'narrator-eliminated', round: 1, phase: 'day', playerIds: ['fay'] },
+        { kind: 'vote', round: 2, eliminatedId: null, voters: [] },
+      ],
+      [],
+      nameOf,
+    )
+    expect(log.map((s) => s.lines[0].text)).toEqual(['Fay was eliminated by the narrator.', 'Nobody was voted out.'])
+  })
+})
+
 describe('summaries', () => {
   it('sums up the night and the vote', () => {
     expect(lastNightText([], nameOf)).toBe('Nobody died last night.')
     expect(lastNightText(['cal'], nameOf)).toBe('Cal was killed in the night.')
     expect(lastNightText(['cal', 'fay'], nameOf)).toBe('Cal and Fay were killed in the night.')
+    expect(joinNames(['Ana', 'Ben', 'Cal'])).toBe('Ana, Ben, Cal')
     expect(lastVoteText('ben', nameOf)).toBe('Ben was voted out.')
     expect(lastVoteText(null, nameOf)).toBe('Nobody was voted out.')
   })
