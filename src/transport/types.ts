@@ -18,13 +18,16 @@ export interface RoomConnection {
   leave(): void
 }
 
-// Creates or joins rooms. Phase 2: browser tabs. Phase 3: Firebase.
+// Creates or joins rooms. Each transport knows who this device is
+// (a per-tab id for the local transport, a Firebase sign-in for the real one).
 export interface RoomTransport {
-  host(hostId: string, hostName: string): Promise<RoomConnection>
-  join(code: string, playerId: string, name: string): Promise<RoomConnection>
+  host(hostName: string): Promise<RoomConnection>
+  join(code: string, name: string): Promise<RoomConnection>
+  // Picks a hosted room back up after the narrator refreshes or reopens the page.
+  resumeHost(code: string): Promise<RoomConnection>
 }
 
-// Why joining failed: 'room-not-found', or an engine code like 'duplicate-name'.
+// Why joining failed: 'room-not-found', 'host-offline', or an engine code like 'duplicate-name'.
 export class JoinError extends Error {
   code: string
 

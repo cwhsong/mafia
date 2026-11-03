@@ -5,13 +5,19 @@ import { createRoomSession, type SessionState } from './roomSession'
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 
+// One session per "device", all sharing in-memory channels
 function setup() {
-  return createLocalTransport({
-    channels: createMemoryChannels(),
-    joinTimeoutMs: 50,
-    newSeed: () => 1,
-    newCode: () => 'KXQRTZ',
-  })
+  const channels = createMemoryChannels()
+  return (playerId: string) =>
+    createRoomSession(
+      createLocalTransport({
+        playerId,
+        channels,
+        joinTimeoutMs: 50,
+        newSeed: () => 1,
+        newCode: () => 'KXQRTZ',
+      }),
+    )
 }
 
 function inRoom(state: SessionState) {
@@ -21,11 +27,11 @@ function inRoom(state: SessionState) {
 
 describe('room session', () => {
   it('starts idle', () => {
-    expect(createRoomSession(setup(), 'me').getSnapshot()).toEqual({ status: 'idle' })
+    expect(setup()('me').getSnapshot()).toEqual({ status: 'idle' })
   })
 
   it('hosts a room and shows the narrator view', async () => {
-    const session = createRoomSession(setup(), 'host')
+    const session = setup()('host')
     await session.host('Chisp')
     const state = inRoom(session.getSnapshot())
     expect(state).toMatchObject({ code: 'KXQRTZ', isHost: true, hostName: 'Chisp' })
@@ -33,9 +39,9 @@ describe('room session', () => {
   })
 
   it('shows "connecting" while joining, then the player view', async () => {
-    const transport = setup()
-    await createRoomSession(transport, 'host').host('Chisp')
-    const session = createRoomSession(transport, 'ana')
+    const device = setup()
+    await device('host').host('Chisp')
+    const session = device('ana')
     const seen: string[] = []
     session.subscribe(() => seen.push(session.getSnapshot().status))
 
@@ -45,7 +51,7 @@ describe('room session', () => {
   })
 
   it('reports a failed join in plain words', async () => {
-    const session = createRoomSession(setup(), 'ana')
+    const session = setup()('ana')
     await session.join('NOPENO', 'Ana')
     expect(session.getSnapshot()).toMatchObject({
       status: 'failed',
@@ -55,12 +61,12 @@ describe('room session', () => {
   })
 
   it('updates when the narrator changes the game', async () => {
-    const transport = setup()
-    const narrator = createRoomSession(transport, 'host')
+    const device = setup()
+    const narrator = device('host')
     await narrator.host('Chisp')
-    const ana = createRoomSession(transport, 'ana')
+    const ana = device('ana')
     await ana.join('KXQRTZ', 'Ana')
-    await createRoomSession(transport, 'ben').join('KXQRTZ', 'Ben')
+    await device('ben').join('KXQRTZ', 'Ben')
     await settle()
 
     const view = inRoom(ana.getSnapshot()).view
@@ -68,7 +74,7 @@ describe('room session', () => {
   })
 
   it('keeps engine errors on the narrator screen until dismissed', async () => {
-    const session = createRoomSession(setup(), 'host')
+    const session = setup()('host')
     await session.host('Chisp')
     session.send({ type: 'deal' })
     expect(inRoom(session.getSnapshot()).error?.code).toBe('invalid-setup')
@@ -77,10 +83,10 @@ describe('room session', () => {
   })
 
   it('moves to "closed" when the narrator leaves', async () => {
-    const transport = setup()
-    const narrator = createRoomSession(transport, 'host')
+    const device = setup()
+    const narrator = device('host')
     await narrator.host('Chisp')
-    const ana = createRoomSession(transport, 'ana')
+    const ana = device('ana')
     await ana.join('KXQRTZ', 'Ana')
 
     narrator.leave()
@@ -90,7 +96,7 @@ describe('room session', () => {
   })
 
   it('ignores a second host/join while already in a room', async () => {
-    const session = createRoomSession(setup(), 'host')
+    const session = setup()('host')
     await session.host('Chisp')
     await session.join('KXQRTZ', 'Again')
     expect(inRoom(session.getSnapshot()).isHost).toBe(true)

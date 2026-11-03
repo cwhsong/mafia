@@ -78,6 +78,11 @@ export function teamLabel(team: Team): string {
 }
 
 // Join link for a room, e.g. https://cwhsong.github.io/mafia/#KXQRTZ
-export function joinLink(code: string, location: Pick<Location, 'origin' | 'pathname'>): string {
-  return `${location.origin}${location.pathname}#${code}`
+// In test mode the link keeps ?test, so every tab opened from it is a separate player.
+export function joinLink(
+  code: string,
+  location: Pick<Location, 'origin' | 'pathname'>,
+  keepTestMode = false,
+): string {
+  return `${location.origin}${location.pathname}${keepTestMode ? '?test' : ''}#${code}`
 }

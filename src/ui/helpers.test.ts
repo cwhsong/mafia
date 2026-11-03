@@ -51,6 +51,8 @@ describe('labels', () => {
   it('builds a join link', () => {
     expect(joinLink('KXQRTZ', { origin: 'https://cwhsong.github.io', pathname: '/mafia/' }))
       .toBe('https://cwhsong.github.io/mafia/#KXQRTZ')
+    expect(joinLink('KXQRTZ', { origin: 'https://cwhsong.github.io', pathname: '/mafia/' }, true))
+      .toBe('https://cwhsong.github.io/mafia/?test#KXQRTZ')
   })
 })
 

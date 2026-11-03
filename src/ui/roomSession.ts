@@ -20,6 +20,7 @@ export interface RoomSession {
   subscribe(listener: () => void): () => void
   host(name: string): Promise<void>
   join(code: string, name: string): Promise<void>
+  resumeHost(code: string): Promise<void>
   send(command: Command): void
   leave(): void
   dismissError(): void
@@ -27,7 +28,7 @@ export interface RoomSession {
 
 // Plain (non-React) store holding this device's room connection.
 // React reads it through useRoom; tests use it directly.
-export function createRoomSession(transport: RoomTransport, playerId: string): RoomSession {
+export function createRoomSession(transport: RoomTransport): RoomSession {
   let state: SessionState = { status: 'idle' }
   let connection: RoomConnection | null = null
   let unsubscribe: (() => void) | null = null
@@ -85,8 +86,9 @@ export function createRoomSession(transport: RoomTransport, playerId: string): R
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    host: (name) => connect('host', () => transport.host(playerId, name)),
-    join: (code, name) => connect('join', () => transport.join(code, playerId, name)),
+    host: (name) => connect('host', () => transport.host(name)),
+    join: (code, name) => connect('join', () => transport.join(code, name)),
+    resumeHost: (code) => connect('host', () => transport.resumeHost(code)),
     send(command) {
       connection?.send(command)
     },

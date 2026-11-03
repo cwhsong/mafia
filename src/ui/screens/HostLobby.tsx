@@ -4,6 +4,7 @@ import { AVAILABLE_ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { countRoles, withRoleCount, fillWithVillagers, joinLink } from '../helpers'
 import type { InRoomState, RoomSession } from '../roomSession'
+import { isTestMode } from '../testMode'
 
 interface Props {
   session: RoomSession
@@ -15,7 +16,7 @@ export function HostLobby({ session, state, game }: Props) {
   const [copied, setCopied] = useState(false)
   const counts = countRoles(game.roleSlots)
   const problems = validateSetup(game)
-  const link = joinLink(state.code, window.location)
+  const link = joinLink(state.code, window.location, isTestMode && !import.meta.env.DEV)
 
   function setCount(roleId: string, count: number) {
     session.send({ type: 'setRoleSlots', slots: withRoleCount(game.roleSlots, roleId, count) })
@@ -31,7 +32,7 @@ export function HostLobby({ session, state, game }: Props) {
     }
   }
 
-  // Dev only: fill the lobby with pretend players so you can test with fewer tabs.
+  // Test mode only: fill the lobby with pretend players so you can test with fewer tabs.
   function addTestPlayers() {
     const names = ['Ana', 'Ben', 'Cal', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal']
     const taken = new Set(game.players.map((p) => p.name.toLowerCase()))
@@ -55,7 +56,7 @@ export function HostLobby({ session, state, game }: Props) {
           <button type="button" className="btn btn-small" onClick={copyLink}>
             {copied ? 'Copied' : 'Copy join link'}
           </button>
-          {import.meta.env.DEV && (
+          {isTestMode && (
             <button type="button" className="btn btn-small btn-quiet" onClick={addTestPlayers}>
               + 5 test players
             </button>

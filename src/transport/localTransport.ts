@@ -5,6 +5,7 @@ import { generateRoomCode } from './roomCode'
 import { JoinError, type RoomConnection, type RoomEvent, type RoomTransport } from './types'
 
 interface LocalTransportOptions {
+  playerId: string
   channels?: ChannelFactory
   joinTimeoutMs?: number
   newSeed?: () => number
@@ -13,8 +14,9 @@ interface LocalTransportOptions {
 
 // Phase 2 transport: rooms live in browser tabs and talk over BroadcastChannel.
 // Only works between tabs of the same browser. Phase 3 swaps in Firebase.
-export function createLocalTransport(options: LocalTransportOptions = {}): RoomTransport {
+export function createLocalTransport(options: LocalTransportOptions): RoomTransport {
   const {
+    playerId,
     channels = browserChannels,
     joinTimeoutMs = 2000,
     newSeed = randomSeed,
@@ -22,18 +24,23 @@ export function createLocalTransport(options: LocalTransportOptions = {}): RoomT
   } = options
 
   return {
-    async host(hostId, hostName) {
+    async host(hostName) {
       const code = newCode()
       return createHostRoom({
         code,
-        hostId,
+        hostId: playerId,
         hostName,
         seed: newSeed(),
         channel: channels(roomChannelName(code)),
       })
     },
 
-    join(code, playerId, name) {
+    async resumeHost(code) {
+      // The narrator's tab held the game, so a refresh lost it.
+      throw new JoinError('room-not-found', `Room ${code} ended when the narrator's tab closed.`)
+    },
+
+    join(code, name) {
       return new Promise<RoomConnection>((resolve, reject) => {
         const channel = channels(roomChannelName(code))
         const listeners = new Set<(event: RoomEvent) => void>()

@@ -1,32 +1,33 @@
-# React + TypeScript + Vite
+# Mafia: Daybreak
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Play Mafia in person. Phones run the night; the narrator runs the story.
 
-Currently, two official plugins are available:
+Live: https://cwhsong.github.io/mafia/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Running it locally
 
-## React Compiler
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | The app at `http://localhost:5173/mafia/`. Tabs in one browser talk to each other directly; no Firebase needed. Test mode is on. |
+| `npm test` | Engine, transport and UI tests (fast, no setup). |
+| `npm run build` | Type-checks everything and builds the site into `dist/`. |
+| `npm run emulators` | Starts the Firebase emulators (database + sign-in) on your laptop. Needs Java 21. |
+| `npm run dev:firebase` | The app using the real Firebase code, pointed at the emulators. Run `npm run emulators` first. |
+| `npm run test:rules` | Security-rules and integration tests against the emulator. Needs Java 21. CI runs these on every PR. |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Test mode
 
-## Expanding the Oxlint configuration
+Add `?test` to the address (`https://cwhsong.github.io/mafia/?test`) to:
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- show **+ 5 test players** in the narrator's lobby, and
+- make every tab a separate player, so you can host in one tab and join in another.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+Without `?test`, each browser is one person (as on real phones).
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## How it fits together
+
+- `src/engine`: the rules, as plain TypeScript. Every change goes through `reduce(state, command)`.
+- `src/roles`: one file per role.
+- `src/transport`: how devices share a room. `localTransport` (tabs) for development, `firebase/` for the live site. Both implement `RoomConnection`.
+- `src/ui`: React screens. The room state decides which screen shows.
+- `database.rules.json`: who can read and write what in Firebase. Publish changes in the Firebase console (Realtime Database → Rules).
