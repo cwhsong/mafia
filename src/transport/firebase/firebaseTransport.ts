@@ -65,6 +65,14 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
 
   const roomPath = (code: string) => `rooms/${code}`
 
+  async function me(): Promise<string> {
+    try {
+      return await signIn()
+    } catch {
+      throw new JoinError('offline', 'Couldn’t connect. Check your internet connection and try again.')
+    }
+  }
+
   async function readMeta(code: string): Promise<Meta | null> {
     const meta = (await db.get(`${roomPath(code)}/meta`)) as Meta | null
     if (!meta) return null
@@ -273,7 +281,7 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
 
   return {
     async host(hostName) {
-      const uid = await signIn()
+      const uid = await me()
       for (let attempt = 0; attempt < 5; attempt++) {
         const code = newCode()
         if (await readMeta(code)) continue // code in use; try another
@@ -292,7 +300,7 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
     },
 
     async resumeHost(code) {
-      const uid = await signIn()
+      const uid = await me()
       const meta = await readMeta(code)
       const closed = await db.get(`${roomPath(code)}/closed`)
       if (!meta || closed || meta.hostUid !== uid) {
@@ -303,7 +311,7 @@ export function createFirebaseTransport(options: FirebaseTransportOptions): Room
     },
 
     async join(code, name) {
-      const uid = await signIn()
+      const uid = await me()
       const meta = await readMeta(code)
       const closed = await db.get(`${roomPath(code)}/closed`)
       if (!meta || closed) throw new JoinError('room-not-found', `No game found with code ${code}.`)
