@@ -25,6 +25,6 @@ describe('role info', () => {
 
   it('builds the tag line', () => {
     expect(tagLine(INFO.medic)).toBe('Town Protective · Beginner')
-    expect(tagLine(INFO.villager)).toBe('Town · Beginner · Repeatable')
+    expect(tagLine(INFO.villager)).toBe('Town · Beginner')
   })
 })

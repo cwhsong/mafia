@@ -382,8 +382,7 @@ details.tools > summary {
   background: none;
   color: inherit;
   font: inherit;
-  text-decoration: underline dotted;
-  text-underline-offset: 4px;
+  text-align: left;
   cursor: pointer;
 }
 
@@ -418,6 +417,35 @@ details.tools > summary {
   color: var(--bg);
 }
 
+.picker-factions {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.picker-faction-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+}
+
 .picker-group + .picker-group {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* The narrator's lobby: the role picker spreads its factions into columns on wide screens */
+@media (min-width: 900px) {
+  .room-wide {
+    max-width: 1160px;
+  }
+
+  .room-wide > *:not(.picker-section) {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+
+  .picker-factions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
 }

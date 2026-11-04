@@ -4,22 +4,22 @@ const STEPS = [
   {
     label: 'Setup',
     title: 'One narrator, everyone else plays',
-    text: 'The narrator hosts on their phone, picks the roles and reads out the room code. Everyone else joins on their own phone. Roles are dealt in secret: tap your card to see yours, and keep it to yourself.',
+    text: 'The narrator shares the room code and picks the pool of roles for the game. Everyone else joins on their own phone. Roles are dealt in secret: tap your card to see yours.',
   },
   {
     label: 'Night',
     title: 'Phones run the night',
-    text: 'Everyone looks at their phone at once. The Mafia choose who to kill, and every other role makes its move: protect, investigate, distract. Players with no power pick who they suspect, so nobody can tell who is doing what.',
+    text: 'Everyone uses their phones for night actions. The Mafia choose who to kill, and every other role makes their move: protect, investigate, distract, etc.',
   },
   {
     label: 'Dawn',
     title: 'The narrator tells the story',
-    text: 'Each player gets a private message about their night. The narrator sees everything that happened and tells the town who died, never who did it or what role they had.',
+    text: 'Each player gets a private message about their night. The narrator sees everything that happened and tells the town who died.',
   },
   {
     label: 'Day',
     title: 'Talk it out, then vote',
-    text: 'Accuse, defend, bluff. From Day 2, vote on your phone; votes are public, like pointing around the table. Whoever gets the most votes, and more than Abstain, is out. A tie means nobody is.',
+    text: 'Accuse, defend, bluff. Everyone votes on their phone; votes are public, like pointing around the table. Whoever gets the most votes, and more votes than Abstain, is out.',
   },
 ]
 
