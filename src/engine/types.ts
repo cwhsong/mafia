@@ -14,13 +14,18 @@ export type DetectiveResult = 'mafia' | 'not-mafia'
 
 export type NightActionKind = 'kill' | 'protect' | 'investigate'
 
+// Who a night ability may be aimed at.
+//   other: any living player but yourself     any: any living player, yourself included
+//   self:  only yourself (an on/off ability)  dead: a dead player     none: no pick at all
+export type TargetRule = 'other' | 'any' | 'self' | 'dead' | 'none'
+
 export interface NightAbility {
-  kind: NightActionKind
-  priority: number          // lower runs first when the night resolves
-  canTargetSelf: boolean
-  sharedWithTeam?: boolean  // true for Mafia: the team picks one kill together
-  maxUses?: number          // e.g. Vigilante's limited bullets; absent = unlimited
+  kind: NightActionKind     // decides which step of the night it resolves in (see steps.ts)
+  target: TargetRule
+  sharedWithTeam?: boolean  // true for Mafia killers: the team picks one kill together
+  maxUses?: number          // e.g. the Vigilante's bullets; absent = unlimited
   selfUses?: number         // how often they may target themselves (Medic: once); absent = unlimited
+  fromNight?: number        // first night it can be used (Vigilante: 2); absent = Night 1
 }
 
 export interface RoleDef {
@@ -119,6 +124,7 @@ export interface GameState {
   lastNight: { round: number; deaths: string[] } | null  // shown on the following day
   results: Record<string, PrivateResult[]> // each player's private messages, oldest first
   selfTargets: Record<string, number>     // times each player has targeted themselves
+  uses: Record<string, number>            // times each player has used a limited ability
   votes: Record<string, string>           // this vote: voter id → target id or ABSTAIN
   voteResult: VoteResult | null           // set when the narrator closes the vote
   lastVote: { round: number; eliminatedId: string | null } | null  // shown the following night

@@ -21,7 +21,7 @@ describe('every role', () => {
 
   it.each(ROLE_LIST.filter((r) => r.night))('$id has a valid night ability', (role) => {
     const night = role.night!
-    expect(Number.isFinite(night.priority)).toBe(true)
+    expect(['other', 'any', 'self', 'dead', 'none']).toContain(night.target)
     if (night.maxUses !== undefined) {
       expect(Number.isInteger(night.maxUses)).toBe(true)
       expect(night.maxUses).toBeGreaterThan(0)
