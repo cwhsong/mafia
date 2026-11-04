@@ -453,15 +453,15 @@ export function PlayerGame({ session, state, view }: Props) {
   const roleSection = roleId ? (
     <section className="stack">
       {!isDayOne && <p className="section-label">Your role</p>}
-      <RoleCard roleId={roleId} faceUp={faceUp} onToggle={() => setFaceUp((up) => !up)} />
-      <p className="hint" style={{ textAlign: 'center' }}>
+      <RoleCard
+        roleId={roleId}
+        faceUp={faceUp}
+        onToggle={() => setFaceUp((up) => !up)}
+        onDetails={() => setDetailsOpen(true)}
+      />
+      <p className="hint role-card-hint">
         {faceUp ? 'Tap the card to hide it again.' : 'Make sure nobody is looking, then tap.'}
       </p>
-      {faceUp && (
-        <button type="button" className="btn btn-small btn-quiet" onClick={() => setDetailsOpen(true)}>
-          More details
-        </button>
-      )}
       {detailsOpen && <RoleSheet roleId={roleId} onClose={() => setDetailsOpen(false)} />}
       {faceUp && view.nemesisTarget && (
         <p className="summary">Your target: {nameOf(view.nemesisTarget)}. Get them voted out.</p>

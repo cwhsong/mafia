@@ -70,14 +70,10 @@ export function RolesPage({ openRoleId }: Props) {
         return (
           <section key={faction.id} className={`faction faction-${faction.id}`} aria-labelledby={`f-${faction.id}`}>
             <h2 id={`f-${faction.id}`} className="faction-title">{faction.name}</h2>
-            <p className="faction-goal">
-              {faction.id !== 'neutral' && <strong>Goal: </strong>}
-              {faction.goal}
-            </p>
-            {faction.note && <p className="hint">{faction.note}</p>}
+            <p className="faction-goal">{faction.goal}</p>
             {faction.rules && (
               <details className="panel faction-rules">
-                <summary>{faction.name} rules</summary>
+                <summary>{faction.name} Rules</summary>
                 <ul>
                   {faction.rules.map((r) => (
                     <li key={r}>{r}</li>
@@ -97,7 +93,6 @@ export function RolesPage({ openRoleId }: Props) {
             {faction.categories.map((cat) => (
               <div key={cat.name} className="category">
                 <h3 className="section-label">{cat.name}</h3>
-                {cat.blurb && <p className="hint">{cat.blurb}</p>}
                 <div className="tiles">
                   {rolesIn(faction.id, cat.name).map((r) => (
                     <RoleTile key={r.id} info={r} />

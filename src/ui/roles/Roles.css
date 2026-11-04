@@ -88,7 +88,7 @@
 .faction-neutral .faction-title { color: var(--neutral); }
 
 .faction-goal {
-  max-width: 62ch;
+  color: var(--text);
 }
 
 .category {

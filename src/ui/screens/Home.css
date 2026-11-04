@@ -34,6 +34,10 @@
 .home-lede {
   font-size: 19px;
   color: var(--muted);
+}
+
+/* The hero tagline stays short; other ledes use the full width */
+.home-copy .home-lede {
   max-width: 34ch;
 }
 
@@ -121,13 +125,3 @@
   gap: var(--space-6);
 }
 
-.home-links {
-  display: flex;
-  gap: var(--space-2);
-  color: var(--muted);
-}
-
-.home-links a {
-  color: var(--text);
-  text-underline-offset: 3px;
-}

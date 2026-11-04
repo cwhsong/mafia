@@ -3,7 +3,6 @@ import { CardFan } from '../components/CardFan'
 import { codeFromHash, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../../transport/roomCode'
 import type { RoomSession, SessionState } from '../roomSession'
 import { HowToPlay } from './HowToPlay'
-import { rolesHref } from '../route'
 import './Room.css'
 import './Home.css'
 
@@ -53,19 +52,6 @@ export function Home({ session, state }: HomeProps) {
         <p className="home-lede">
           Phones run the night. Narrator runs the story.
         </p>
-        <p className="home-links">
-          <a
-            href="#how-title"
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById('how-title')?.scrollIntoView({ behavior: 'smooth' })
-            }}
-          >
-            How to play
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href={rolesHref()}>Roles</a>
-        </p>
 
         <form className="panel stack home-panel" onSubmit={handleSubmit}>
           <div className="tabs" role="tablist" aria-label="Host or join">
@@ -101,8 +87,9 @@ export function Home({ session, state }: HomeProps) {
               : 'Ask the narrator for the room code.'}
           </p>
 
-          {mode === 'join' && (
-            <label className="field">
+          {/* Kept in place on Host (hidden), so switching tabs doesn't change the panel's height */}
+          {(
+            <label className="field" style={mode === 'join' ? undefined : { visibility: 'hidden' }} aria-hidden={mode !== 'join'}>
               Room code
               <input
                 className="input input-code"
@@ -116,6 +103,7 @@ export function Home({ session, state }: HomeProps) {
                 autoComplete="off"
                 spellCheck={false}
                 maxLength={8}
+                tabIndex={mode === 'join' ? 0 : -1}
               />
               {codeTyped && !codeOk && (
                 <span className="error">Codes use letters only, without I, L or O.</span>

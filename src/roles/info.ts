@@ -19,7 +19,6 @@ export interface RoleInfo {
 
 export interface CategoryInfo {
   name: string
-  blurb?: string
 }
 
 export interface FactionInfo {
@@ -27,7 +26,6 @@ export interface FactionInfo {
   name: string
   goal: string
   rules?: string[]          // shared rules shown once, above the cards
-  note?: string
   categories: CategoryInfo[]
 }
 
@@ -60,13 +58,8 @@ export const FACTIONS: FactionInfo[] = [
   {
     id: 'neutral',
     name: 'Neutral',
-    goal: 'Neutrals play for themselves, with varying goals.',
-    note: "Benign and Evil roles never block anyone's win; Killing and Chaos roles must be eliminated for the Town to win.",
-    categories: [
-      { name: 'Benign', blurb: 'Harmless: wins by surviving, whoever else wins.' },
-      { name: 'Evil', blurb: 'Wins by fooling the Town, not by killing.' },
-      { name: 'Killing', blurb: 'A lone killer: wins as the last one standing.' },
-    ],
+    goal: "Play for yourself, with your own goal. Benign and Evil roles never block anyone's win; Killing and Chaos roles must be eliminated for the Town to win.",
+    categories: [{ name: 'Benign' }, { name: 'Evil' }, { name: 'Killing' }],
   },
 ]
 
@@ -349,7 +342,7 @@ export function categoryLabel(info: RoleInfo): string {
   return info.category ? `${faction} ${info.category}` : faction
 }
 
-// "Town Protective · Beginner · Repeatable"
+// "Town Protective · Beginner"
 export function tagLine(info: RoleInfo): string {
-  return [categoryLabel(info), info.complexity, info.repeatable ? 'Repeatable' : null].filter(Boolean).join(' · ')
+  return `${categoryLabel(info)} · ${info.complexity}`
 }
