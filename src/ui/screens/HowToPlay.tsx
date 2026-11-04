@@ -36,7 +36,7 @@ export function HowToPlay() {
       <div className="stack">
         <p className="eyebrow">How to play</p>
         <h2 id="how-title" className="how-title">Mafia, with the logistics handled</h2>
-        <p className="home-lede">
+        <p className="home-lede how-lede">
           A party game of hidden roles for 5 or more people in the same room. The town tries to find
           the Mafia before the Mafia take over.
         </p>
