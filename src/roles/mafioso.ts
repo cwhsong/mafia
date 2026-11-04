@@ -1,5 +1,4 @@
 import type { RoleDef } from '../engine/types'
-import { PRIORITY } from '../engine/priorities'
 
 export const mafioso: RoleDef = {
   id: 'mafioso',
@@ -10,8 +9,7 @@ export const mafioso: RoleDef = {
   description: 'Each night, agree with the rest of the Mafia on one player to eliminate.',
   night: {
     kind: 'kill',
-    priority: PRIORITY.kill,
-    canTargetSelf: false,
+    target: 'other',
     sharedWithTeam: true,
   },
   available: true,

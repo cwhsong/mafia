@@ -1,5 +1,4 @@
 import type { RoleDef } from '../engine/types'
-import { PRIORITY } from '../engine/priorities'
 
 export const medic: RoleDef = {
   id: 'medic',
@@ -10,8 +9,7 @@ export const medic: RoleDef = {
   description: 'Each night, choose one player to protect from being killed.',
   night: {
     kind: 'protect',
-    priority: PRIORITY.protect,
-    canTargetSelf: true,
+    target: 'any',
     selfUses: 1, // once per game, as in Town of Salem
   },
   available: true,
