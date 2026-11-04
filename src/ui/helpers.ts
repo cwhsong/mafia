@@ -58,7 +58,7 @@ export function causeForPhase(phase: Phase): DeathCause {
 }
 
 export function winnerLabel(team: Team): string {
-  return team === 'town' ? 'The Town wins' : team === 'mafia' ? 'The Mafia win' : 'A neutral player wins'
+  return team === 'town' ? 'The Town wins' : team === 'mafia' ? 'The Mafia win' : 'The Serial Killer wins'
 }
 
 export function teamOf(roleId: string | null | undefined): Team | null {

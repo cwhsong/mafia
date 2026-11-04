@@ -1,6 +1,9 @@
 import type { GameState, Phase, PrivateResult, PublicEntry, Team } from './types'
 import { ROLES } from '../roles'
-import { eligibleTargets, nightChoice, type NightChoice } from './night'
+import { eligibleTargets, nightChoice, nightOptions, killMarkTargets, marksKill, type NightChoice } from './night'
+import { maxUsesFor } from './resolve'
+import { winnersOf } from './win'
+import { withDefaults } from './defaults'
 import { voteOptions } from './vote'
 
 // What everyone at the table may know about a player.
@@ -24,7 +27,12 @@ export interface NightView {
   choice: NightChoice
   targets: string[]          // who they may pick, in seat order
   myPick: string | null
-  teamPicks: { playerId: string; name: string; targetId: string }[]  // Mafia only: teammates' picks, live
+  options: string[]          // extra choices with the pick (Hypnotist's fake message, Warden's 'execute')
+  myOption: string | null
+  usesLeft: number | null    // bullets, alerts, vests left; null = unlimited
+  teamPicks: { playerId: string; name: string; targetId: string }[]  // Mafia only: teammates' kill marks, live
+  teamActions: { playerId: string; name: string; roleId: string; targetId: string }[]  // Mafia only: teammates' ability picks
+  killMark: { targets: string[]; myMark: string | null } | null       // Mafia support: who you'd like killed
 }
 
 // The vote, which is public, as in pointing around the table.
@@ -54,6 +62,11 @@ export interface PlayerView {
   vote: VoteView | null            // only during the vote
   history: PublicEntry[]           // the public record (deaths, votes)
   finale: { round: number; fromPhase: Phase } | null  // during the finale; the winner stays hidden
+  mayorId: string | null           // the revealed Mayor, shown on every roster
+  blackmailed: boolean             // you can't speak today
+  nemesisTarget: string | null     // Nemesis only: the Town player to get voted out
+  revenge: { kind: 'avenger' | 'jester'; options: string[] } | null  // your last act, while it's pending
+  winners: string[] | null         // everyone who won, once the game has ended
 }
 
 // The narrator sees the whole game.
@@ -62,7 +75,8 @@ export interface NarratorView {
   game: GameState
 }
 
-export function playerView(state: GameState, playerId: string): PlayerView {
+export function playerView(saved: GameState, playerId: string): PlayerView {
+  const state = withDefaults(saved)
   const players: PublicPlayer[] = state.players.map(({ id, name, seat, alive }) => ({
     id,
     name,
@@ -86,15 +100,34 @@ export function playerView(state: GameState, playerId: string): PlayerView {
       : null
 
   const choice = state.phase === 'night' ? nightChoice(state, playerId) : null
+  const ability = self?.roleId ? ROLES[self.roleId]?.night : undefined
+  const max = ability && choice === ability.kind ? maxUsesFor(ability, state) : undefined
+  const isKiller = (id: string) => {
+    const r = ROLES[state.players.find((p) => p.id === id)?.roleId ?? '']
+    return r?.night?.kind === 'kill' && r.night.sharedWithTeam === true
+  }
+  const markOf = (id: string) => (isKiller(id) ? state.nightPicks[id] : state.killMarks[id])
   const night: NightView | null = choice
     ? {
         choice,
         targets: eligibleTargets(state, playerId),
         myPick: state.nightPicks[playerId] ?? null,
+        options: nightOptions(state, playerId),
+        myOption: state.nightOptions[playerId] ?? null,
+        usesLeft: max === undefined ? null : max - (state.uses[playerId] ?? 0),
         teamPicks: teammates
-          .filter((t) => t.alive && state.nightPicks[t.id])
-          .map((t) => ({ playerId: t.id, name: t.name, targetId: state.nightPicks[t.id] })),
+          .filter((t) => t.alive && markOf(t.id))
+          .map((t) => ({ playerId: t.id, name: t.name, targetId: markOf(t.id)! })),
+        teamActions: teammates
+          .filter((t) => t.alive && !isKiller(t.id) && state.nightPicks[t.id])
+          .map((t) => ({ playerId: t.id, name: t.name, roleId: t.roleId, targetId: state.nightPicks[t.id] })),
+        killMark: marksKill(state, playerId)
+          ? { targets: killMarkTargets(state, playerId), myMark: state.killMarks[playerId] ?? null }
+          : null,
       }
+    : null
+  const revenge = state.pendingRevenge?.playerId === playerId && state.phase !== 'finale' && state.phase !== 'ended'
+    ? { kind: state.pendingRevenge.kind, options: state.pendingRevenge.options.filter((id) => state.players.find((p) => p.id === id)?.alive) }
     : null
 
   const vote: VoteView | null =
@@ -127,9 +160,14 @@ export function playerView(state: GameState, playerId: string): PlayerView {
     vote,
     history: [...state.history],
     finale: state.finale ? { round: state.finale.round, fromPhase: state.finale.fromPhase } : null,
+    mayorId: state.mayorId,
+    blackmailed: state.blackmailed?.playerId === playerId && state.blackmailed.round === state.round,
+    nemesisTarget: self?.roleId === 'nemesis' ? (state.nemesisTargets[playerId] ?? null) : null,
+    revenge,
+    winners: state.phase === 'ended' ? winnersOf(state) : null,
   }
 }
 
 export function narratorView(state: GameState): NarratorView {
-  return { kind: 'narrator', game: state }
+  return { kind: 'narrator', game: withDefaults(state) }
 }

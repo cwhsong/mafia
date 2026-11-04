@@ -5,16 +5,13 @@ import { medic } from './medic'
 import { detective } from './detective'
 import { vigilante } from './vigilante'
 import { jester } from './jester'
+import { WAVE_1 } from './wave1'
+import { ROLE_INFO } from './info'
 
 // Every role, in the order the role picker will show them
-export const ROLE_LIST: RoleDef[] = [
-  villager,
-  mafioso,
-  medic,
-  detective,
-  vigilante,
-  jester,
-]
+const ALL: RoleDef[] = [villager, mafioso, medic, detective, vigilante, jester, ...WAVE_1]
+const ORDER = ROLE_INFO.map((r) => r.id)
+export const ROLE_LIST: RoleDef[] = [...ALL].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id))
 
 // Look up a role by id: ROLES['medic']
 export const ROLES: Record<string, RoleDef> = Object.fromEntries(
@@ -31,8 +28,10 @@ export function getRole(id: string): RoleDef {
   return role
 }
 
-// What the Detective sees when investigating this role
+// Suspicious = a threat the Town must eliminate: the Mafia and Neutral Killing / Chaos roles.
+// The Godfather reads as not suspicious.
 export function detectiveSees(role: RoleDef): DetectiveResult {
   if (role.appearsAs) return role.appearsAs
-  return role.team === 'mafia' ? 'mafia' : 'not-mafia'
+  const hostile = role.team === 'neutral' && (role.category === 'Neutral Killing' || role.category === 'Neutral Chaos')
+  return role.team === 'mafia' || hostile ? 'suspicious' : 'not-suspicious'
 }

@@ -2,6 +2,7 @@ import type { GameState } from './types'
 import { EngineError, assertPhase } from './errors'
 import { validateSetup } from './setup'
 import { createRng, shuffle } from './rng'
+import { assignNemesisTargets } from './night'
 
 export function dealRoles(state: GameState): GameState {
   assertPhase(state, 'lobby')
@@ -19,7 +20,7 @@ export function dealRoles(state: GameState): GameState {
     roleId: shuffledRoles[index],
   }))
 
-  return {
+  return assignNemesisTargets({
     ...state,
     players,
     phase: 'day',
@@ -29,5 +30,5 @@ export function dealRoles(state: GameState): GameState {
       { type: 'dealt' },
       { type: 'phase', phase: 'day', round: 1 },
     ],
-  }
+  })
 }

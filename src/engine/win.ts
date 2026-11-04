@@ -27,3 +27,21 @@ export function checkWin(state: GameState): Team | null {
   if (hostile === 1 && contenders <= 2) return 'neutral'
   return null
 }
+
+// Everyone who won, once the game is over: the winning side, plus Neutrals who got what
+// they wanted (a Survivor or Amnesiac still alive, a Jester or Nemesis whose plan worked).
+export function winnersOf(state: GameState): string[] {
+  if (!state.winner) return []
+  const winner = state.winner
+  return state.players
+    .filter((p) => {
+      const role = roleOf(p)
+      if ((state.neutralWins ?? []).includes(p.id)) return true
+      if (role?.team === 'neutral') {
+        if (isHostileNeutral(role)) return winner === 'neutral' && p.alive
+        return role.category === 'Neutral Benign' && p.alive
+      }
+      return role?.team === winner
+    })
+    .map((p) => p.id)
+}

@@ -22,17 +22,24 @@ describe('every role', () => {
   it.each(ROLE_LIST.filter((r) => r.night))('$id has a valid night ability', (role) => {
     const night = role.night!
     expect(['other', 'any', 'self', 'dead', 'none']).toContain(night.target)
-    if (night.maxUses !== undefined) {
-      expect(Number.isInteger(night.maxUses)).toBe(true)
-      expect(night.maxUses).toBeGreaterThan(0)
+    for (const players of [5, 9, 15]) {
+      const max = typeof night.maxUses === 'function' ? night.maxUses(players) : night.maxUses
+      if (max === undefined) continue
+      expect(Number.isInteger(max)).toBe(true)
+      expect(max).toBeGreaterThan(0)
     }
   })
 })
 
 describe('registry', () => {
-  it('makes exactly the base deck available', () => {
+  it('makes the base deck and wave 1 available', () => {
     const ids = AVAILABLE_ROLES.map((r) => r.id).sort()
-    expect(ids).toEqual(['detective', 'mafioso', 'medic', 'villager'])
+    expect(ids).toEqual([
+      'amnesiac', 'avenger', 'bartender', 'blackmailer', 'bodyguard', 'consigliere', 'consort', 'coroner',
+      'detective', 'framer', 'godfather', 'hypnotist', 'impostor', 'jester', 'lookout', 'mafioso', 'mayor',
+      'medic', 'nemesis', 'private-eye', 'psychic', 'serial-killer', 'shadow', 'spy', 'survivor', 'veteran',
+      'vigilante', 'villager', 'warden',
+    ])
   })
 
   it('includes at least one available Mafia role', () => {
@@ -49,21 +56,21 @@ describe('registry', () => {
 })
 
 describe('detectiveSees', () => {
-  it('shows Mafia team roles as mafia', () => {
-    expect(detectiveSees(getRole('mafioso'))).toBe('mafia')
+  it('reads the Mafia and hostile Neutrals as suspicious', () => {
+    expect(detectiveSees(getRole('mafioso'))).toBe('suspicious')
+    expect(detectiveSees(getRole('framer'))).toBe('suspicious')
+    expect(detectiveSees(getRole('serial-killer'))).toBe('suspicious')
   })
 
-  it('shows town and neutral roles as not-mafia', () => {
-    expect(detectiveSees(getRole('villager'))).toBe('not-mafia')
-    expect(detectiveSees(getRole('jester'))).toBe('not-mafia')
+  it('reads the Town, Benign and Evil Neutrals, and the Godfather as not suspicious', () => {
+    expect(detectiveSees(getRole('villager'))).toBe('not-suspicious')
+    expect(detectiveSees(getRole('jester'))).toBe('not-suspicious')
+    expect(detectiveSees(getRole('survivor'))).toBe('not-suspicious')
+    expect(detectiveSees(getRole('godfather'))).toBe('not-suspicious')
   })
 
   it('respects appearsAs overrides', () => {
-    const fakeGodfather: RoleDef = {
-      ...getRole('mafioso'),
-      id: 'godfather',
-      appearsAs: 'not-mafia',
-    }
-    expect(detectiveSees(fakeGodfather)).toBe('not-mafia')
+    const fake: RoleDef = { ...getRole('mafioso'), id: 'fake', appearsAs: 'not-suspicious' }
+    expect(detectiveSees(fake)).toBe('not-suspicious')
   })
 })

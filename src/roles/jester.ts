@@ -6,7 +6,7 @@ export const jester: RoleDef = {
   emoji: '🃏',
   team: 'neutral',
   category: 'Neutral Evil',
-  description: 'You win if the town votes you out. Act suspicious, but not too suspicious.',
+  description: 'Act suspicious on purpose and get yourself voted out.',
   night: null,
-  available: false, // enabled in Phase 5 once its win condition is tested
+  available: true,
 }

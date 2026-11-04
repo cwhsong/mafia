@@ -118,7 +118,7 @@ describe('playerView at night', () => {
       { type: 'resolveNight' },
     ])
     expect(playerView(state, 'dee').messages).toEqual([
-      { kind: 'investigated', round: 1, targetId: 'ben', result: 'mafia' },
+      { kind: 'investigated', round: 1, targetId: 'ben', result: 'suspicious' },
     ])
     expect(JSON.stringify(playerView(state, 'eve'))).not.toContain('investigated')
   })

@@ -1,4 +1,7 @@
-import type { NightChoice, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
+import type { FakeMessage, NightChoice, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
+import { ROLES } from '../roles'
+
+const roleName = (id: string) => ROLES[id]?.name ?? id
 
 // Everything the screens say about night actions, messages and story beats lives here,
 // so the wording stays consistent and can be tested.
@@ -20,33 +23,74 @@ export const QUIET_NIGHT = [
   'Nothing stirred near you tonight.',
 ]
 
+// The verb on the confirm button: "Confirm: protect Ana"
 export const ACTION_VERB: Record<NightChoice, string> = {
   kill: 'kill',
   protect: 'protect',
   investigate: 'investigate',
   suspect: 'suspect',
+  revenge: 'take',
+  shortlist: 'investigate',
+  watch: 'watch',
+  follow: 'follow',
+  examine: 'examine',
+  spy: 'suspect',
+  vision: 'suspect',
+  categorize: 'investigate',
+  guard: 'guard',
+  jail: 'lock up',
+  alert: 'go on alert',
+  distract: 'distract',
+  vest: 'wear a vest',
+  blackmail: 'blackmail',
+  frame: 'frame',
+  disguise: 'copy',
+  hypnotize: 'hypnotize',
+  remember: 'remember',
 }
 
 export function nightSubtext(choice: NightChoice): string {
   switch (choice) {
-    case 'kill':
-      return 'Choose who the Mafia will kill.'
-    case 'protect':
-      return 'Choose who to protect tonight.'
-    case 'investigate':
-      return 'Choose who to investigate.'
-    case 'suspect':
-      return 'Who do you suspect? Nobody sees your answer.'
+    case 'kill': return 'Choose who to kill.'
+    case 'protect': return 'Choose who to protect tonight.'
+    case 'investigate': return 'Choose who to investigate.'
+    case 'suspect': return 'Who do you suspect? Nobody sees your answer.'
+    case 'revenge': return 'You were voted out. Choose one of the people who voted for you to take with you.'
+    case 'shortlist': return 'Choose who to investigate. You’ll learn three roles they could be.'
+    case 'watch': return 'Choose whose house to watch.'
+    case 'follow': return 'Choose who to follow.'
+    case 'examine': return 'Choose a dead player to examine.'
+    case 'spy': return 'Who do you suspect? Nobody sees your answer.'
+    case 'vision': return 'Who do you suspect? Nobody sees your answer.'
+    case 'categorize': return 'Choose who to look into for the family.'
+    case 'guard': return 'Choose who to guard tonight.'
+    case 'jail': return 'Choose who to lock up tonight.'
+    case 'alert': return 'Go on alert tonight, or stay home.'
+    case 'distract': return 'Choose who to distract tonight.'
+    case 'vest': return 'Wear a vest tonight, or save it.'
+    case 'blackmail': return 'Choose who to blackmail.'
+    case 'frame': return 'Choose who to frame.'
+    case 'disguise': return 'Choose whose role to copy tonight.'
+    case 'hypnotize': return 'Choose who to hypnotize, then the memory to plant.'
+    case 'remember': return 'You can remember who you were. Choose a dead player, or wait.'
   }
+}
+
+export const FAKE_LABEL: Record<FakeMessage, string> = {
+  protected: 'Someone watched over them',
+  attacked: 'They were attacked but survived',
+  distracted: 'They were distracted',
+  'locked-up': 'They were locked up',
+  quiet: 'A quiet night',
 }
 
 // A player's private dawn message.
 export function messageText(result: PrivateResult, nameOf: NameOf): string {
   switch (result.kind) {
     case 'investigated':
-      return result.result === 'mafia'
-        ? `${nameOf(result.targetId)} is Mafia.`
-        : `${nameOf(result.targetId)} is not Mafia.`
+      return result.result === 'suspicious'
+        ? `${nameOf(result.targetId)} is suspicious.`
+        : `${nameOf(result.targetId)} is not suspicious.`
     case 'patient-saved':
       return `Your patient, ${nameOf(result.targetId)}, was attacked, and you saved them.`
     case 'protected':
@@ -62,7 +106,80 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
         ? 'You didn’t protect anyone.'
         : result.action === 'investigate'
           ? 'You didn’t investigate anyone.'
-          : 'You didn’t choose anyone.'
+          : result.action === 'alert'
+            ? 'You stayed home.'
+            : result.action === 'vest'
+              ? 'You saved your vest.'
+              : result.action === 'remember'
+                ? 'You didn’t try to remember.'
+                : 'You didn’t choose anyone.'
+    case 'shortlist': {
+      const names = result.roleIds.map(roleName)
+      const options = names.length > 1 ? `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} or ${names[names.length - 1]}` : names[0]
+      return `${nameOf(result.targetId)} is the ${options}.`
+    }
+    case 'watched':
+      return result.visitorIds.length > 0
+        ? `${joinNames(result.visitorIds.map(nameOf))} visited ${nameOf(result.targetId)}.`
+        : `Nobody visited ${nameOf(result.targetId)}.`
+    case 'followed':
+      return result.visitedIds.length > 0
+        ? `${nameOf(result.targetId)} visited ${joinNames(result.visitedIds.map(nameOf))}.`
+        : `${nameOf(result.targetId)} stayed home.`
+    case 'examined':
+      return `${nameOf(result.targetId)} was the ${roleName(result.roleId)}.`
+    case 'spied':
+      return result.targetIds.length > 0
+        ? `The Mafia visited ${joinNames(result.targetIds.map(nameOf))}.`
+        : 'The Mafia visited nobody.'
+    case 'vision':
+      return result.evil
+        ? `A vision: one of ${joinNames(result.playerIds.map(nameOf))} is suspicious.`
+        : `A vision: one of ${joinNames(result.playerIds.map(nameOf))} is not suspicious.`
+    case 'categorized':
+      return `${nameOf(result.targetId)} is ${result.category}.`
+    case 'guarded':
+      return result.fought
+        ? `You guarded ${nameOf(result.targetId)} and fought off their attacker.`
+        : `You guarded ${nameOf(result.targetId)}. Nobody attacked them.`
+    case 'jailed':
+      return result.executedRole
+        ? `You executed ${nameOf(result.targetId)}. They were the ${roleName(result.executedRole)}.`
+        : `You locked up ${nameOf(result.targetId)}.`
+    case 'alerted':
+      return result.shotIds.length > 0
+        ? `You went on alert and shot ${joinNames(result.shotIds.map(nameOf))}.`
+        : 'You went on alert. Nobody came.'
+    case 'distracted-them':
+      return `You distracted ${nameOf(result.targetId)}.`
+    case 'vest':
+      return `You wore a vest. ${result.left === 1 ? '1 vest left.' : `${result.left} vests left.`}`
+    case 'shot':
+      return `You attacked ${nameOf(result.targetId)}.`
+    case 'blackmailed-them':
+      return `You blackmailed ${nameOf(result.targetId)}.`
+    case 'framed':
+      return `You framed ${nameOf(result.targetId)}.`
+    case 'disguised':
+      return `You copied ${nameOf(result.targetId)}: you read as the ${roleName(result.roleId)} tonight.`
+    case 'hypnotized':
+      return `You hypnotized ${nameOf(result.targetId)}: “${FAKE_LABEL[result.fake]}.”`
+    case 'remembered':
+      return `You remembered: you are the ${roleName(result.roleId)}.`
+    case 'revenge':
+      return `You took ${nameOf(result.targetId)} with you.`
+    case 'locked-up':
+      return 'You were locked up last night.'
+    case 'distracted':
+      return 'You were distracted last night.'
+    case 'blackmailed':
+      return 'You were blackmailed. Don’t speak today; you can still vote.'
+    case 'watched-over':
+      return 'Someone watched over you last night.'
+    case 'guilt':
+      return 'Overcome with guilt, you take your own life.'
+    case 'became-jester':
+      return 'Your target died before the town could vote them out. You are now the Jester.'
   }
 }
 
@@ -88,13 +205,19 @@ export function publicEntryText(entry: PublicEntry, nameOf: NameOf): string {
         : 'Nobody was voted out.'
     case 'narrator-eliminated':
       return `${joinNames(entry.playerIds.map(nameOf))} ${entry.playerIds.length === 1 ? 'was' : 'were'} eliminated by the narrator.`
+    case 'mayor':
+      return `${nameOf(entry.playerId)} revealed themselves as the Mayor.`
+    case 'revenge':
+      return entry.targetId ? `${nameOf(entry.targetId)} died.` : 'Nobody else died.'
+    case 'remembered':
+      return `Someone remembered they were the ${roleName(entry.roleId)}.`
   }
 }
 
 function sectionOf(entry: PublicEntry): { round: number; night: boolean } {
-  if (entry.kind === 'night') return { round: entry.round, night: true }
-  if (entry.kind === 'vote') return { round: entry.round, night: false }
-  return { round: entry.round, night: entry.phase === 'night' || entry.phase === 'dawn' }
+  if (entry.kind === 'night' || entry.kind === 'remembered') return { round: entry.round, night: true }
+  if (entry.kind === 'narrator-eliminated') return { round: entry.round, night: entry.phase === 'night' || entry.phase === 'dawn' }
+  return { round: entry.round, night: false }
 }
 
 // The game so far, Town of Salem style: public events and your private results,
@@ -138,27 +261,67 @@ export function beatText(beat: StoryBeat, nameOf: NameOf, roleOf: (id: string) =
       return `${nameOf(beat.targetId)} was killed.`
     case 'investigated':
       return `The ${roleOf(beat.detectiveId)} (${nameOf(beat.detectiveId)}) investigated ${nameOf(beat.targetId)}: ${
-        beat.result === 'mafia' ? 'Mafia' : 'not Mafia'
+        beat.result === 'suspicious' ? 'suspicious' : 'not suspicious'
       }.`
     case 'suspects':
       return `${nameOf(beat.playerId)} suspects ${nameOf(beat.targetId)}.`
     case 'no-pick':
       return `${nameOf(beat.playerId)} (${roleOf(beat.playerId)}) didn’t choose anyone.`
+    case 'ability':
+      return abilityBeat(beat, nameOf, roleOf)
   }
 }
 
+function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: NameOf, roleOf: (id: string) => string): string {
+  const who = `The ${roleOf(beat.actorId)} (${nameOf(beat.actorId)})`
+  const [t, ...rest] = beat.targetIds
+  const list = (ids: string[]) => (ids.length > 0 ? joinNames(ids.map(nameOf)) : 'nobody')
+  switch (beat.ability) {
+    case 'jail': return `${who} locked up ${nameOf(t)}.`
+    case 'execute': return `${who} executed ${nameOf(t)}.`
+    case 'alert': return `${who} went on alert.`
+    case 'veteran-shot': return `${who} shot ${nameOf(t)}, who came to their house.`
+    case 'distract':
+      if (beat.detail === 'alert') return `${who} tried to distract ${nameOf(t)}, who was on alert.`
+      if (beat.detail === 'killer') return `${who} distracted ${nameOf(t)}, who turned on them instead.`
+      return `${who} distracted ${nameOf(t)}.`
+    case 'guard': return `${who} guarded ${nameOf(t)}.`
+    case 'intercept': return `${who} stepped in front of ${nameOf(t)} and fought off ${nameOf(rest[0])}.`
+    case 'vest': return `${who} wore a vest.`
+    case 'frame': return `${who} framed ${nameOf(t)}.`
+    case 'disguise': return `${who} copied ${nameOf(t)} and read as the ${beat.detail ? roleName(beat.detail) : 'same role'}.`
+    case 'redirect': return `${who} attacked ${nameOf(t)} instead.`
+    case 'kill': return `${who} attacked ${nameOf(t)}.`
+    case 'blocked': return `${who} was stopped, and nobody else could reach ${nameOf(t)}.`
+    case 'shortlist': return `${who} investigated ${nameOf(t)}: ${beat.detail}.`
+    case 'watch': return `${who} watched ${nameOf(t)}. Visitors: ${list(rest)}.`
+    case 'follow': return `${who} followed ${nameOf(t)}, who visited ${list(rest)}.`
+    case 'examine': return `${who} examined ${nameOf(t)}: the ${beat.detail ? roleName(beat.detail) : '?'}.`
+    case 'spy': return `${who} saw the Mafia visit ${list(beat.targetIds)}.`
+    case 'vision': return `${who} had a vision of ${list(beat.targetIds)} (${beat.detail === 'evil' ? 'one is suspicious' : 'one is not suspicious'}).`
+    case 'categorize': return `${who} looked into ${nameOf(t)}: ${beat.detail}.`
+    case 'blackmail': return `${who} blackmailed ${nameOf(t)}.`
+    case 'hypnotize': return `${who} hypnotized ${nameOf(t)}: “${beat.detail ? FAKE_LABEL[beat.detail as FakeMessage] : ''}.”`
+    case 'remember': return `${who} remembered being the ${beat.detail ? roleName(beat.detail) : '?'}.`
+    case 'guilt': return `${who} died of guilt.`
+    case 'revenge': return `${who} took revenge on ${nameOf(t)}.`
+    default: return `${who} acted on ${list(beat.targetIds)}.`
+  }
+}
+
+// The public line never gives a cause: the narrator tells how, not who.
 export function lastNightText(deaths: string[], nameOf: NameOf): string {
   if (deaths.length === 0) return 'Nobody died last night.'
-  return `${joinNames(deaths.map(nameOf))} ${deaths.length === 1 ? 'was' : 'were'} killed in the night.`
+  return `${joinNames(deaths.map(nameOf))} died last night.`
 }
 
 export function lastVoteText(eliminatedId: string | null, nameOf: NameOf): string {
   return eliminatedId ? `${nameOf(eliminatedId)} was voted out.` : 'Nobody was voted out.'
 }
 
-export function gameOverSubtext(myTeam: Team | null, winner: Team): string | null {
-  if (!myTeam) return null
-  return myTeam === winner ? 'Winner winner chicken dinner.' : 'GGs.'
+export function gameOverSubtext(iWon: boolean | null): string | null {
+  if (iWon === null) return null
+  return iWon ? 'Winner winner chicken dinner.' : 'GGs.'
 }
 
 // Why the game ended, for the narrator's finale.
@@ -167,5 +330,5 @@ export function winReason(winner: Team): string {
     ? 'The last of the Mafia is gone.'
     : winner === 'mafia'
       ? 'The Mafia now match the town.'
-      : 'A neutral player got what they wanted.'
+      : 'The Serial Killer is the last one standing.'
 }

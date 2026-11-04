@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ABSTAIN, type GameState } from '../../engine'
+import { ABSTAIN, eligibleTargets, winnersOf, type GameState } from '../../engine'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { GameOver } from '../components/GameOver'
@@ -27,7 +27,13 @@ function Deal({ game }: { game: GameState }) {
         const role = p.roleId ? ROLES[p.roleId] : undefined
         return (
           <li key={p.id}>
-            <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
+            <span>
+              <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
+              {p.id === game.mayorId && <span className="hint"> · revealed</span>}
+              {game.nemesisTargets[p.id] && p.roleId === 'nemesis' && (
+                <span className="hint"> · target: {game.players.find((t) => t.id === game.nemesisTargets[p.id])?.name}</span>
+              )}
+            </span>
             <span className={`team-tag team-${role?.team}`}>{role?.name}</span>
           </li>
         )
@@ -104,7 +110,8 @@ function NarratorTools({ session, game, nameOf }: { session: RoomSession; game: 
 function NightPanel({ session, game, nameOf }: { session: RoomSession; game: GameState; nameOf: NameOf }) {
   const [confirming, setConfirming] = useState(false)
   const alive = game.players.filter((p) => p.alive)
-  const missing = alive.filter((p) => !game.nightPicks[p.id])
+  // Players with nobody to pick (a Coroner before anyone has died) aren't waited for
+  const missing = alive.filter((p) => !game.nightPicks[p.id] && eligibleTargets(game, p.id).length > 0)
 
   function end() {
     if (missing.length > 0 && !confirming) {
@@ -202,8 +209,12 @@ function VotePanel({ session, game, nameOf }: { session: RoomSession; game: Game
   const alive = game.players.filter((p) => p.alive)
   const result = game.voteResult
   const votersFor = (id: string) =>
-    Object.entries(game.votes).filter(([, target]) => target === id).map(([voter]) => nameOf(voter))
+    Object.entries(game.votes).filter(([, target]) => target === id).map(([voter]) => nameOf(voter) + (voter === game.mayorId ? ' ×3' : ''))
   const notVoted = alive.filter((p) => !game.votes[p.id])
+  // A revealed Mayor's vote counts three times
+  const weightOf = (voter: string) => (voter === game.mayorId ? 3 : 1)
+  const countFor = (id: string) =>
+    Object.entries(game.votes).filter(([, target]) => target === id).reduce((n, [voter]) => n + weightOf(voter), 0)
 
   return (
     <section className="stack">
@@ -215,7 +226,7 @@ function VotePanel({ session, game, nameOf }: { session: RoomSession; game: Game
               <span>{p.name}</span>
               <span className="pick-extra">
                 {voters.length > 0 && <span className="voters">{voters.join(', ')}</span>}
-                <span className="vote-count">{voters.length || ''}</span>
+                <span className="vote-count">{countFor(p.id) || ''}</span>
               </span>
             </li>
           )
@@ -226,7 +237,7 @@ function VotePanel({ session, game, nameOf }: { session: RoomSession; game: Game
             <span className="voters">
               {[...votersFor(ABSTAIN), notVoted.length ? `${notVoted.length} not voted` : ''].filter(Boolean).join(', ')}
             </span>
-            <span className="vote-count">{votersFor(ABSTAIN).length + notVoted.length || ''}</span>
+            <span className="vote-count">{countFor(ABSTAIN) + notVoted.reduce((n, p) => n + weightOf(p.id), 0) || ''}</span>
           </span>
         </li>
       </ul>
@@ -305,7 +316,11 @@ export function NarratorGame({ session, state, game }: Props) {
     return (
       <div className="room">
         <RoomHeader code={state.code} />
-        <GameOver winner={game.winner} players={game.players.map((p) => ({ ...p, roleId: p.roleId ?? '' }))} />
+        <GameOver
+          winner={game.winner}
+          players={game.players.map((p) => ({ ...p, roleId: p.roleId ?? '' }))}
+          winners={winnersOf(game)}
+        />
         <LeaveButton label="Close room" warning="Everyone will be sent back to the start." onConfirm={session.leave} />
       </div>
     )
@@ -313,6 +328,8 @@ export function NarratorGame({ session, state, game }: Props) {
 
   const { title, subtext } = headingFor(game)
   const dayButton = nextPhaseLabel(game.phase, game.round)
+  const avenger = game.pendingRevenge?.kind === 'avenger' ? game.pendingRevenge : null
+  const jester = game.pendingRevenge?.kind === 'jester' && game.phase === 'night' ? game.pendingRevenge : null
 
   return (
     <div className="room">
@@ -342,15 +359,28 @@ export function NarratorGame({ session, state, game }: Props) {
       {game.phase === 'night' && game.lastVote && (
         <p className="summary">{lastVoteText(game.lastVote.eliminatedId, nameOf)}</p>
       )}
+      {avenger && (
+        <p className="warning">
+          Waiting for {nameOf(avenger.playerId)} (Avenger) to choose who to take with them. Everything else waits.
+        </p>
+      )}
+      {jester && (
+        <p className="summary">
+          {nameOf(jester.playerId)} (Jester) is choosing one of their voters: {joinNames(jester.options.map(nameOf))}. If they don’t, one is picked at random.
+        </p>
+      )}
+      {game.phase === 'vote' && game.blackmailed?.round === game.round && (
+        <p className="summary">{nameOf(game.blackmailed.playerId)} is blackmailed today: hold them to silence. They can still vote.</p>
+      )}
 
-      {dayButton && (
+      {dayButton && !avenger && (
         <button type="button" className="btn btn-primary" onClick={() => session.send({ type: 'advance' })}>
           {dayButton}
         </button>
       )}
-      {game.phase === 'night' && <NightPanel session={session} game={game} nameOf={nameOf} />}
-      {game.phase === 'dawn' && <DawnPanel session={session} game={game} nameOf={nameOf} />}
-      {game.phase === 'vote' && <VotePanel session={session} game={game} nameOf={nameOf} />}
+      {!avenger && game.phase === 'night' && <NightPanel session={session} game={game} nameOf={nameOf} />}
+      {!avenger && game.phase === 'dawn' && <DawnPanel session={session} game={game} nameOf={nameOf} />}
+      {!avenger && game.phase === 'vote' && <VotePanel session={session} game={game} nameOf={nameOf} />}
 
       <section className="stack">
         <p className="section-label">{game.phase === 'finale' ? 'Everyone’s roles' : 'The deal'}</p>

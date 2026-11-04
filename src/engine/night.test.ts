@@ -129,9 +129,9 @@ describe('resolving the night', () => {
 
   it('tells the Detective whether their target is Mafia', () => {
     const yes = resolve(play(night(), { dee: 'ben' }))
-    expect(messagesFor(yes, 'dee')).toEqual([{ kind: 'investigated', round: 1, targetId: 'ben', result: 'mafia' }])
+    expect(messagesFor(yes, 'dee')).toEqual([{ kind: 'investigated', round: 1, targetId: 'ben', result: 'suspicious' }])
     const no = resolve(play(night(), { dee: 'eve' }))
-    expect(messagesFor(no, 'dee')).toEqual([{ kind: 'investigated', round: 1, targetId: 'eve', result: 'not-mafia' }])
+    expect(messagesFor(no, 'dee')).toEqual([{ kind: 'investigated', round: 1, targetId: 'eve', result: 'not-suspicious' }])
   })
 
   it('still gives the Detective a result about someone killed that night', () => {
@@ -143,7 +143,7 @@ describe('resolving the night', () => {
   it('still carries out the action of a player who is killed that night', () => {
     const state = resolve(play(night(), { ana: 'dee', ben: 'dee', dee: 'ben' }))
     expect(state.dawn?.deaths).toEqual(['dee'])
-    expect(messagesFor(state, 'dee')[0]).toMatchObject({ kind: 'investigated', result: 'mafia' })
+    expect(messagesFor(state, 'dee')[0]).toMatchObject({ kind: 'investigated', result: 'suspicious' })
   })
 
   it('gives every living player at least one message, so nobody stands out', () => {
@@ -164,8 +164,9 @@ describe('resolving the night', () => {
     expect(state.dawn?.beats).toEqual([
       { kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'eve', tieBroken: false },
       { kind: 'protected', medicId: 'cal', targetId: 'eve' },
+      expect.objectContaining({ kind: 'ability', ability: 'kill', targetIds: ['eve'] }), // the member who went
       { kind: 'saved', targetId: 'eve' },
-      { kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'mafia' },
+      { kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' },
       { kind: 'no-pick', playerId: 'eve' },
       { kind: 'suspects', playerId: 'fay', targetId: 'ana' },
       { kind: 'no-pick', playerId: 'gus' },
