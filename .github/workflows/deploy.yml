@@ -36,7 +36,7 @@ jobs:
       id-token: write
     concurrency:
       group: pages
-      cancel-in-progress: true
+      cancel-in-progress: false # finish each deploy in order, so a newer merge never gets skipped
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
