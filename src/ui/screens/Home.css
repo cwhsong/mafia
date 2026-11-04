@@ -32,7 +32,7 @@
 }
 
 .home-lede {
-  font-size: 19px;
+  font-size: 18px;
   color: var(--muted);
 }
 
@@ -125,7 +125,3 @@
   gap: var(--space-6);
 }
 
-
-.how-lede {
-  font-size: 18px;
-}
