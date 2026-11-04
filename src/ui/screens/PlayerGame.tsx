@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ABSTAIN, type PlayerView, type PrivateResult } from '../../engine'
+import { ABSTAIN, type FakeMessage, type PlayerView, type PrivateResult } from '../../engine'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { LeaveButton } from '../components/LeaveButton'
@@ -9,9 +9,9 @@ import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, Stamp, type PickOption } from '../components/PickList'
 import { usePick } from '../usePick'
 import { RoleSheet } from '../roles/RoleSheet'
-import { phaseLabel, teamOf } from '../helpers'
+import { phaseLabel } from '../helpers'
 import {
-  ACTION_VERB, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText,
+  ACTION_VERB, FAKE_LABEL, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText,
 } from '../text'
 import type { InRoomState, RoomSession } from '../roomSession'
 
@@ -33,6 +33,12 @@ function useNames(view: PlayerView): NameOf {
 function heading(view: PlayerView): { title: string; subtext: string } {
   if (view.phase === 'finale') {
     return { title: 'Daybreak.', subtext: 'The narrator will tell how it ends.' }
+  }
+  if (view.revenge?.kind === 'avenger') {
+    return { title: 'Your last act', subtext: 'You’re out, but you can take someone with you.' }
+  }
+  if (view.night?.choice === 'revenge') {
+    return { title: 'The last laugh', subtext: nightSubtext('revenge') }
   }
   if (view.me && !view.me.alive) {
     return {
@@ -72,46 +78,224 @@ function heading(view: PlayerView): { title: string; subtext: string } {
 
 // ---------- Night ----------
 
+const USE_WORD: Partial<Record<string, [string, string]>> = {
+  kill: ['bullet', 'bullets'],
+  alert: ['alert', 'alerts'],
+  vest: ['vest', 'vests'],
+  remember: ['use', 'uses'],
+}
+
 function NightAction({ session, view, nameOf }: { session: RoomSession; view: PlayerView; nameOf: NameOf }) {
   const night = view.night!
   const me = view.me!
   const pick = usePick(night.myPick)
+  const [option, setOption] = useState<string | null>(night.myOption)
   const teammateIds = new Set(view.teammates.map((t) => t.id))
+  const passive = me.roleId ? ROLES[me.roleId]?.night?.target === 'none' : false
+  const words = USE_WORD[night.choice]
+  const usesLine =
+    night.usesLeft !== null && words ? `${night.usesLeft} ${night.usesLeft === 1 ? words[0] : words[1]} left.` : null
 
-  const options: PickOption[] = view.players.map((p) => ({
+  // An on/off ability (Veteran's alert, Survivor's vest)
+  if (night.choice === 'alert' || night.choice === 'vest') {
+    const on = night.myPick === me.id
+    const label = night.choice === 'alert' ? 'Go on alert tonight' : 'Wear a vest tonight'
+    return (
+      <section className="stack">
+        {usesLine && <p className="hint">{usesLine} Using it counts once the night ends.</p>}
+        {on ? (
+          <>
+            <p className="summary">{night.choice === 'alert' ? 'You’re on alert tonight. ✓' : 'You’re wearing a vest tonight. ✓'}</p>
+            <button type="button" className="btn btn-small btn-quiet" onClick={() => session.send({ type: 'clearAction', playerId: me.id })}>
+              {night.choice === 'alert' ? 'Stay home instead' : 'Save the vest instead'}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={() => session.send({ type: 'submitAction', playerId: me.id, targetId: me.id })}>
+            {label}
+          </button>
+        )}
+      </section>
+    )
+  }
+
+  // Revenge and picks among the dead list only who can be chosen
+  const onlyTargets = night.choice === 'revenge' || night.choice === 'examine' || night.choice === 'remember'
+  const listed = onlyTargets ? view.players.filter((p) => night.targets.includes(p.id)) : view.players
+  const options: PickOption[] = listed.map((p) => ({
     id: p.id,
     label: p.name,
-    dead: !p.alive,
+    dead: !p.alive && night.choice !== 'examine' && night.choice !== 'remember',
     disabled: !night.targets.includes(p.id),
-    note: p.id === me.id ? 'you' : teammateIds.has(p.id) ? 'Mafia' : !p.alive ? 'out' : undefined,
-    extra: (
-      <span className="pick-extra">
-        {night.teamPicks
-          .filter((t) => t.targetId === p.id)
-          .map((t) => (
-            <Stamp key={t.playerId} name={t.name} />
-          ))}
-      </span>
-    ),
+    note: p.id === me.id ? 'you' : teammateIds.has(p.id) ? 'Mafia' : !p.alive ? 'out' : p.id === view.mayorId ? 'Mayor' : undefined,
+    extra:
+      night.choice === 'kill' ? (
+        <span className="pick-extra">
+          {night.teamPicks
+            .filter((t) => t.targetId === p.id)
+            .map((t) => (
+              <Stamp key={t.playerId} name={t.name} />
+            ))}
+        </span>
+      ) : undefined,
   }))
 
-  function confirm() {
-    if (!pick.pending) return
-    session.send({ type: 'submitAction', playerId: me.id, targetId: pick.pending })
+  const needsOption = night.choice === 'hypnotize'
+  const target = pick.pending ?? night.myPick
+  const optionChanged = night.myPick !== null && !pick.pending && option !== night.myOption
+
+  function send(targetId: string) {
+    const chosen = option && night.options.includes(option) ? option : undefined
+    session.send({ type: 'submitAction', playerId: me.id, targetId, ...(chosen ? { option: chosen } : {}) })
     pick.clear()
   }
 
   return (
     <section className="stack">
+      {passive && <p className="hint">Your ability works on its own tonight. Make a pick anyway, so nobody can tell.</p>}
+      {usesLine && <p className="hint">{usesLine}</p>}
+      {night.killMark && <p className="section-label">Your ability</p>}
+      {onlyTargets && options.length === 0 && <p className="hint">Nobody to choose yet.</p>}
       <PickList options={options} selectedIds={pick.selectedIds} confirmedId={night.myPick} onToggle={pick.toggle} />
-      {pick.pending && (
-        <button type="button" className="btn btn-primary" onClick={confirm}>
+
+      {target && night.options.length > 0 && night.choice === 'jail' && (
+        <label className="check-row">
+          <input type="checkbox" checked={option === 'execute'} onChange={(e) => setOption(e.target.checked ? 'execute' : null)} />
+          Execute {nameOf(target)} (once a game; it can’t be stopped)
+        </label>
+      )}
+      {target && needsOption && (
+        <div className="stack">
+          <p className="section-label">Memory to plant</p>
+          <div className="chips">
+            {night.options.map((o) => (
+              <button key={o} type="button" className={`chip ${option === o ? 'is-on' : ''}`} onClick={() => setOption(o)} aria-pressed={option === o}>
+                {FAKE_LABEL[o as FakeMessage]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pick.pending && (!needsOption || option) && (
+        <button type="button" className={`btn ${option === 'execute' ? 'btn-danger' : 'btn-primary'}`} onClick={() => send(pick.pending!)}>
           {night.myPick
             ? `Switch to ${nameOf(pick.pending)}`
-            : `Confirm: ${ACTION_VERB[night.choice]} ${nameOf(pick.pending)}`}
+            : `Confirm: ${option === 'execute' ? 'execute' : ACTION_VERB[night.choice]} ${nameOf(pick.pending)}`}
+        </button>
+      )}
+      {optionChanged && (
+        <button type="button" className="btn btn-primary" onClick={() => send(night.myPick!)}>
+          Update choice
+        </button>
+      )}
+
+      {night.killMark && <KillMark session={session} view={view} nameOf={nameOf} />}
+      {night.teamActions.length > 0 && (
+        <div className="panel stack">
+          <p className="section-label team-mafia">Your family tonight</p>
+          {night.teamActions.map((t) => (
+            <p key={t.playerId} className="hint">
+              {t.name} ({ROLES[t.roleId]?.name}) → {nameOf(t.targetId)}
+            </p>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// Mafia support members mark who the family should kill, alongside their own ability.
+function KillMark({ session, view, nameOf }: { session: RoomSession; view: PlayerView; nameOf: NameOf }) {
+  const night = view.night!
+  const mark = night.killMark!
+  const me = view.me!
+  const pick = usePick(mark.myMark)
+  const options: PickOption[] = view.players
+    .filter((p) => p.alive && !view.teammates.some((t) => t.id === p.id) && p.id !== me.id)
+    .map((p) => ({
+      id: p.id,
+      label: p.name,
+      disabled: !mark.targets.includes(p.id),
+      extra: (
+        <span className="pick-extra">
+          {night.teamPicks
+            .filter((t) => t.targetId === p.id)
+            .map((t) => (
+              <Stamp key={t.playerId} name={t.name} />
+            ))}
+        </span>
+      ),
+    }))
+  return (
+    <section className="stack">
+      <p className="section-label team-mafia">Who should the family kill?</p>
+      <p className="hint">The Godfather’s mark is final; without him, the most-marked player is killed.</p>
+      <PickList options={options} selectedIds={pick.selectedIds} confirmedId={mark.myMark} onToggle={pick.toggle} />
+      {pick.pending && (
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            session.send({ type: 'markKill', playerId: me.id, targetId: pick.pending })
+            pick.clear()
+          }}
+        >
+          {mark.myMark ? `Switch mark to ${nameOf(pick.pending)}` : `Mark ${nameOf(pick.pending)}`}
         </button>
       )}
     </section>
+  )
+}
+
+// An Avenger who just died chooses who to take with them.
+function AvengerPrompt({ session, view, nameOf }: { session: RoomSession; view: PlayerView; nameOf: NameOf }) {
+  const revenge = view.revenge!
+  const me = view.me!
+  const pick = usePick(null)
+  const options: PickOption[] = view.players
+    .filter((p) => revenge.options.includes(p.id))
+    .map((p) => ({ id: p.id, label: p.name }))
+  return (
+    <section className="panel stack">
+      <p className="section-label">Your last act</p>
+      <p>Take someone down with you, or let it go. Everyone is waiting on you.</p>
+      <PickList options={options} selectedIds={pick.selectedIds} onToggle={pick.toggle} />
+      {pick.pending && (
+        <button type="button" className="btn btn-danger" onClick={() => session.send({ type: 'takeRevenge', playerId: me.id, targetId: pick.pending })}>
+          Take {nameOf(pick.pending)} with you
+        </button>
+      )}
+      <button type="button" className="btn btn-small btn-quiet" onClick={() => session.send({ type: 'takeRevenge', playerId: me.id, targetId: null })}>
+        Let it go
+      </button>
+    </section>
+  )
+}
+
+// A Mayor reveals themselves during the day; it's public and can't be undone.
+function MayorReveal({ session, view }: { session: RoomSession; view: PlayerView }) {
+  const [confirming, setConfirming] = useState(false)
+  const me = view.me!
+  if (!confirming) {
+    return (
+      <button type="button" className="btn btn-small" onClick={() => setConfirming(true)}>
+        Reveal yourself as Mayor
+      </button>
+    )
+  }
+  return (
+    <div className="panel stack">
+      <p>Everyone will see you’re the Mayor, and your vote will count three times. The Medic can’t protect you after this.</p>
+      <div className="row">
+        <button type="button" className="btn btn-primary" onClick={() => session.send({ type: 'revealMayor', playerId: me.id })}>
+          Yes, reveal
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={() => setConfirming(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -124,7 +308,10 @@ function VoteAction({ session, view, nameOf }: { session: RoomSession; view: Pla
   const canVote = Boolean(me?.alive) && !vote.closed
 
   const votersFor = (id: string) =>
-    Object.entries(vote.votes).filter(([, target]) => target === id).map(([voter]) => nameOf(voter))
+    Object.entries(vote.votes).filter(([, target]) => target === id).map(([voter]) => nameOf(voter) + (voter === view.mayorId ? ' ×3' : ''))
+  // A revealed Mayor's vote counts three times
+  const weight = (id: string) =>
+    Object.entries(vote.votes).filter(([, target]) => target === id).reduce((n, [voter]) => n + (voter === view.mayorId ? 3 : 1), 0)
 
   const playerOptions: PickOption[] = view.players
     .filter((p) => p.alive)
@@ -134,18 +321,18 @@ function VoteAction({ session, view, nameOf }: { session: RoomSession; view: Pla
         id: p.id,
         label: p.name,
         disabled: !vote.options.includes(p.id),
-        note: p.id === me?.id ? 'you' : undefined,
+        note: p.id === me?.id ? 'you' : p.id === view.mayorId ? 'Mayor' : undefined,
         extra: (
           <span className="pick-extra">
             {voters.length > 0 && <span className="voters">{voters.join(', ')}</span>}
-            <span className="vote-count">{voters.length || ''}</span>
+            <span className="vote-count">{weight(p.id) || ''}</span>
           </span>
         ),
       }
     })
 
   const abstainers = votersFor(ABSTAIN)
-  const abstainTotal = abstainers.length + vote.notVoted.length
+  const abstainTotal = weight(ABSTAIN) + vote.notVoted.reduce((n, id) => n + (id === view.mayorId ? 3 : 1), 0)
   const abstainOption: PickOption = {
     id: ABSTAIN,
     label: 'Abstain',
@@ -244,7 +431,8 @@ export function PlayerGame({ session, state, view }: Props) {
         <RoomHeader code={state.code} />
         <GameOver
           winner={view.winner}
-          subtext={gameOverSubtext(teamOf(roleId), view.winner)}
+          subtext={gameOverSubtext(me ? (view.winners ?? []).includes(me.id) : null)}
+          winners={view.winners ?? []}
           players={view.players.map((p) => ({ ...p, roleId: roles[p.id] ?? '' }))}
           meId={me?.id}
         />
@@ -259,6 +447,8 @@ export function PlayerGame({ session, state, view }: Props) {
   const showPicker = (view.phase === 'night' && view.night) || view.phase === 'vote'
 
   const isDayOne = view.phase === 'day' && view.round === 1
+  const canRevealMayor =
+    roleId === 'mayor' && Boolean(me?.alive) && !view.mayorId && (view.phase === 'day' || view.phase === 'vote')
 
   const roleSection = roleId ? (
     <section className="stack">
@@ -273,6 +463,9 @@ export function PlayerGame({ session, state, view }: Props) {
         </button>
       )}
       {detailsOpen && <RoleSheet roleId={roleId} onClose={() => setDetailsOpen(false)} />}
+      {faceUp && view.nemesisTarget && (
+        <p className="summary">Your target: {nameOf(view.nemesisTarget)}. Get them voted out.</p>
+      )}
       {faceUp && view.teammates.length > 0 && (
         <div className="panel stack">
           <p className="section-label team-mafia">Your fellow Mafia</p>
@@ -304,6 +497,7 @@ export function PlayerGame({ session, state, view }: Props) {
               <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
               {p.id === me?.id && <span className="you"> (you)</span>}
             </span>
+            {p.id === view.mayorId && <span className="team-tag team-town">Mayor</span>}
             {!p.alive && <span className="hint">out</span>}
           </li>
         ))}
@@ -333,6 +527,9 @@ export function PlayerGame({ session, state, view }: Props) {
       ) : (
         // Every other phase: what just happened, then what to do, then the record
         <>
+          {view.revenge?.kind === 'avenger' && <AvengerPrompt session={session} view={view} nameOf={nameOf} />}
+          {view.blackmailed && <p className="warning">You’re blackmailed: don’t speak today. You can still vote.</p>}
+          {canRevealMayor && <MayorReveal session={session} view={view} />}
           {view.phase === 'dawn' && <Messages results={thisNight} nameOf={nameOf} />}
           {(view.phase === 'day' || view.phase === 'vote') &&
             view.lastNight &&

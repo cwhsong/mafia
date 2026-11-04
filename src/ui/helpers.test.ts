@@ -11,7 +11,7 @@ describe('role picker helpers', () => {
 
   it('changes one count and keeps role-picker order', () => {
     expect(withRoleCount(['medic', 'villager'], 'mafioso', 2))
-      .toEqual(['villager', 'mafioso', 'mafioso', 'medic'])
+      .toEqual(['villager', 'medic', 'mafioso', 'mafioso'])
   })
 
   it('removes a role when its count reaches zero, and never goes negative', () => {
@@ -21,7 +21,7 @@ describe('role picker helpers', () => {
 
   it('fills the remaining slots with Villagers', () => {
     expect(fillWithVillagers(['mafioso', 'medic'], 5))
-      .toEqual(['villager', 'villager', 'villager', 'mafioso', 'medic'])
+      .toEqual(['villager', 'villager', 'villager', 'medic', 'mafioso'])
   })
 
   it('leaves a full or over-full list alone', () => {

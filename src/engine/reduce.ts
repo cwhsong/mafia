@@ -4,13 +4,16 @@ import { addPlayer, removePlayer, setRoleSlots } from './setup'
 import { dealRoles } from './deal'
 import { advancePhase } from './phases'
 import { eliminate } from './eliminate'
-import { submitAction, resolveNight, reveal } from './night'
-import { castVote, closeVote, reopenVote, revealVote } from './vote'
+import { submitAction, clearAction, markKill, resolveNight, reveal } from './night'
+import { takeRevenge } from './revenge'
+import { withDefaults } from './defaults'
+import { castVote, closeVote, reopenVote, revealVote, revealMayor } from './vote'
 import { toFinale, revealWinner } from './finale'
 
 // The one way to change a game: give it the current state and a command,
 // get back the new state.
-export function reduce(state: GameState, command: Command): GameState {
+export function reduce(saved: GameState, command: Command): GameState {
+  const state = withDefaults(saved)
   switch (command.type) {
     case 'addPlayer':
       return addPlayer(state, command.id, command.name)
@@ -29,7 +32,15 @@ export function reduce(state: GameState, command: Command): GameState {
       return toFinale(state, { ...after, history: [...after.history, entry] })
     }
     case 'submitAction':
-      return submitAction(state, command.playerId, command.targetId)
+      return submitAction(state, command.playerId, command.targetId, command.option)
+    case 'clearAction':
+      return clearAction(state, command.playerId)
+    case 'markKill':
+      return markKill(state, command.playerId, command.targetId)
+    case 'revealMayor':
+      return revealMayor(state, command.playerId)
+    case 'takeRevenge':
+      return takeRevenge(state, command.playerId, command.targetId)
     case 'resolveNight':
       return resolveNight(state)
     case 'reveal':

@@ -1,10 +1,11 @@
 import type { GameState, Phase } from './types'
-import { assertPhase } from './errors'
+import { assertNoRevenge, assertPhase } from './errors'
 
 // Moves the game to its next phase:
 // Day 1 → Night 1 → Dawn 1 → Day 2 → Vote 2 → Night 2 → Dawn 2 → Day 3 …
 export function advancePhase(state: GameState): GameState {
   assertPhase(state, 'day', 'vote', 'night', 'dawn')
+  assertNoRevenge(state)
 
   const next = nextStep(state.phase, state.round)
   return enterPhase(state, next.phase, next.round)
@@ -13,9 +14,10 @@ export function advancePhase(state: GameState): GameState {
 // Moves to a phase, clearing whatever belonged to the one before it.
 export function enterPhase(state: GameState, phase: Phase, round: number): GameState {
   const fresh: Partial<GameState> = {}
-  if (phase === 'night') Object.assign(fresh, { nightPicks: {}, votes: {}, voteResult: null })
-  if (phase === 'day') Object.assign(fresh, { dawn: null, nightPicks: {} })
-  if (phase === 'vote') Object.assign(fresh, { votes: {}, voteResult: null, dawn: null, nightPicks: {} })
+  const noPicks = { nightPicks: {}, nightOptions: {}, killMarks: {} }
+  if (phase === 'night') Object.assign(fresh, { ...noPicks, votes: {}, voteResult: null })
+  if (phase === 'day') Object.assign(fresh, { ...noPicks, dawn: null })
+  if (phase === 'vote') Object.assign(fresh, { ...noPicks, votes: {}, voteResult: null, dawn: null })
 
   return {
     ...state,

@@ -2,8 +2,8 @@
 export type * from './types'
 export { ABSTAIN, PLAYER_COMMANDS } from './types'
 export { reduce, applyCommands } from './reduce'
-export { createGame, validateSetup, MIN_PLAYERS, MAX_PLAYERS } from './setup'
-export { checkWin } from './win'
+export { createGame, validateSetup, MIN_PLAYERS, MAX_PLAYERS, REPEATABLE } from './setup'
+export { checkWin, winnersOf } from './win'
 export { randomSeed } from './rng'
 export { EngineError, type EngineErrorCode } from './errors'
 export {
@@ -15,5 +15,6 @@ export {
   type Teammate,
 } from './views'
 
-export { eligibleTargets, nightChoice, type NightChoice } from './night'
+export { eligibleTargets, nightChoice, nightOptions, type NightChoice } from './night'
+export { STEPS } from './steps'
 export { voteOptions, tallyVotes } from './vote'

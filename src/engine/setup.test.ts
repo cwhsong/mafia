@@ -87,8 +87,15 @@ describe('setRoleSlots', () => {
     expectEngineError(() => setRoleSlots(lobbyWith(5), ['medik']), 'unknown-role')
   })
 
-  it('rejects unavailable roles', () => {
-    expectEngineError(() => setRoleSlots(lobbyWith(5), ['jester']), 'role-unavailable')
+  it('rejects roles that do not exist', () => {
+    expectEngineError(() => setRoleSlots(lobbyWith(5), ['ferryman']), 'unknown-role')
+  })
+
+  it('allows only one of each unique role', () => {
+    const state = setRoleSlots(lobbyWith(5), ['mafioso', 'medic', 'medic', 'villager', 'villager'])
+    expect(validateSetup(state)).toContain('Only one Medic per game.')
+    const fine = setRoleSlots(lobbyWith(5), ['mafioso', 'medic', 'survivor', 'survivor', 'villager'])
+    expect(validateSetup(fine)).toEqual([])
   })
 
   it('only works in the lobby', () => {

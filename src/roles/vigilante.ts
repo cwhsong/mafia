@@ -6,12 +6,12 @@ export const vigilante: RoleDef = {
   emoji: '🎯',
   team: 'town',
   category: 'Town Killing',
-  description: 'Up to three times per game, choose one player to shoot at night.',
+  description: "Shoot someone. If you kill a Town member, you'll die of guilt the next night.",
   night: {
     kind: 'kill',
     target: 'other',
     maxUses: 2,
     fromNight: 2,
   },
-  available: false, // enabled in Phase 5 once its night logic is tested
+  available: true,
 }

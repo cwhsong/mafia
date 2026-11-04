@@ -17,8 +17,8 @@ describe('night wording', () => {
 
 describe('private messages', () => {
   it('words every kind of message', () => {
-    expect(messageText({ kind: 'investigated', round: 1, targetId: 'ben', result: 'mafia' }, nameOf)).toBe('Ben is Mafia.')
-    expect(messageText({ kind: 'investigated', round: 1, targetId: 'cal', result: 'not-mafia' }, nameOf)).toBe('Cal is not Mafia.')
+    expect(messageText({ kind: 'investigated', round: 1, targetId: 'ben', result: 'suspicious' }, nameOf)).toBe('Ben is suspicious.')
+    expect(messageText({ kind: 'investigated', round: 1, targetId: 'cal', result: 'not-suspicious' }, nameOf)).toBe('Cal is not suspicious.')
     expect(messageText({ kind: 'patient-saved', round: 1, targetId: 'cal' }, nameOf))
       .toBe('Your patient, Cal, was attacked, and you saved them.')
     expect(messageText({ kind: 'protected', round: 1, targetId: 'cal' }, nameOf)).toBe('You protected Cal. Nobody attacked them.')
@@ -46,8 +46,8 @@ describe('the narrator’s story', () => {
     expect(beatText({ kind: 'protected', medicId: 'cal', targetId: 'fay' }, nameOf, roleOf)).toBe('The Medic (Cal) protected Fay.')
     expect(beatText({ kind: 'saved', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was saved.')
     expect(beatText({ kind: 'killed', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was killed.')
-    expect(beatText({ kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'mafia' }, nameOf, roleOf))
-      .toBe('The Detective (Dee) investigated Ben: Mafia.')
+    expect(beatText({ kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' }, nameOf, roleOf))
+      .toBe('The Detective (Dee) investigated Ben: suspicious.')
     expect(beatText({ kind: 'suspects', playerId: 'fay', targetId: 'ana' }, nameOf, roleOf)).toBe('Fay suspects Ana.')
     expect(beatText({ kind: 'no-pick', playerId: 'fay' }, nameOf, roleOf)).toBe('Fay (Villager) didn’t choose anyone.')
   })
@@ -62,15 +62,15 @@ describe('your log', () => {
         { kind: 'night', round: 2, deaths: [] },
       ],
       [
-        { kind: 'investigated', round: 1, targetId: 'dee', result: 'mafia' },
-        { kind: 'investigated', round: 2, targetId: 'cal', result: 'not-mafia' },
+        { kind: 'investigated', round: 1, targetId: 'dee', result: 'suspicious' },
+        { kind: 'investigated', round: 2, targetId: 'cal', result: 'not-suspicious' },
       ],
       nameOf,
     )
     expect(log).toEqual([
-      { heading: 'Night 1', lines: [{ text: 'Dee is Mafia.', private: true }, { text: 'Ana was killed in the night.', private: false }] },
+      { heading: 'Night 1', lines: [{ text: 'Dee is suspicious.', private: true }, { text: 'Ana died last night.', private: false }] },
       { heading: 'Day 2', lines: [{ text: 'Dee was voted out (Ben, Cal, Fay).', private: false }] },
-      { heading: 'Night 2', lines: [{ text: 'Cal is not Mafia.', private: true }, { text: 'Nobody died last night.', private: false }] },
+      { heading: 'Night 2', lines: [{ text: 'Cal is not suspicious.', private: true }, { text: 'Nobody died last night.', private: false }] },
     ])
   })
 
@@ -95,16 +95,16 @@ describe('your log', () => {
 describe('summaries', () => {
   it('sums up the night and the vote', () => {
     expect(lastNightText([], nameOf)).toBe('Nobody died last night.')
-    expect(lastNightText(['cal'], nameOf)).toBe('Cal was killed in the night.')
-    expect(lastNightText(['cal', 'fay'], nameOf)).toBe('Cal and Fay were killed in the night.')
+    expect(lastNightText(['cal'], nameOf)).toBe('Cal died last night.')
+    expect(lastNightText(['cal', 'fay'], nameOf)).toBe('Cal and Fay died last night.')
     expect(joinNames(['Ana', 'Ben', 'Cal'])).toBe('Ana, Ben, Cal')
     expect(lastVoteText('ben', nameOf)).toBe('Ben was voted out.')
     expect(lastVoteText(null, nameOf)).toBe('Nobody was voted out.')
   })
 
   it('cheers the winners and consoles the rest', () => {
-    expect(gameOverSubtext('town', 'town')).toBe('Winner winner chicken dinner.')
-    expect(gameOverSubtext('mafia', 'town')).toBe('GGs.')
-    expect(gameOverSubtext(null, 'town')).toBeNull()
+    expect(gameOverSubtext(true)).toBe('Winner winner chicken dinner.')
+    expect(gameOverSubtext(false)).toBe('GGs.')
+    expect(gameOverSubtext(null)).toBeNull()
   })
 })

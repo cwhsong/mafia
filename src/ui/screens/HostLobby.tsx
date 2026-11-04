@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { validateSetup, MIN_PLAYERS, type GameState } from '../../engine'
+import { validateSetup, MIN_PLAYERS, REPEATABLE, type GameState } from '../../engine'
 import { AVAILABLE_ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { countRoles, withRoleCount, fillWithVillagers, joinLink } from '../helpers'
 import type { InRoomState, RoomSession } from '../roomSession'
 import { LeaveButton } from '../components/LeaveButton'
 import { isTestMode } from '../testMode'
-import { INFO } from '../../roles/info'
+import { FACTIONS, INFO } from '../../roles/info'
 import { RoleSheet } from '../roles/RoleSheet'
 
 interface Props {
@@ -109,46 +109,59 @@ export function HostLobby({ session, state, game }: Props) {
             {game.roleSlots.length} of {game.players.length} chosen
           </span>
         </div>
-        <ul className="list">
-          {AVAILABLE_ROLES.map((role) => {
-            const count = counts[role.id] ?? 0
-            return (
-              <li key={role.id} className="role-row">
-                <div>
-                  <div>
-                    <button type="button" className="role-name-btn" onClick={() => setInfoFor(role.id)}>
-                      {role.name}
-                    </button>{' '}
-                    <span className={`team-tag team-${role.team}`}>{role.team}</span>
-                  </div>
-                  <p className="hint">{INFO[role.id]?.ability ?? role.description}</p>
-                </div>
-                <div className="stepper">
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setCount(role.id, count - 1)}
-                    disabled={count === 0}
-                    aria-label={`One fewer ${role.name}`}
-                  >
-                    −
-                  </button>
-                  <span className="stepper-count" aria-label={`${count} ${role.name}`}>
-                    {count}
-                  </span>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setCount(role.id, count + 1)}
-                    aria-label={`One more ${role.name}`}
-                  >
-                    +
-                  </button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        {FACTIONS.map((faction) => {
+          const roles = AVAILABLE_ROLES.filter((r) => INFO[r.id]?.faction === faction.id)
+          if (roles.length === 0) return null
+          return (
+            <div key={faction.id} className="stack picker-group">
+              <p className={`section-label team-${faction.id}`}>{faction.name}</p>
+              <ul className="list">
+                {roles.map((role) => {
+                  const count = counts[role.id] ?? 0
+                  const unique = !REPEATABLE.has(role.id)
+                  const info = INFO[role.id]
+                  return (
+                    <li key={role.id} className="role-row">
+                      <div>
+                        <div>
+                          <button type="button" className="role-name-btn" onClick={() => setInfoFor(role.id)}>
+                            {role.name}
+                          </button>{' '}
+                          <span className={`team-tag team-${role.team}`}>{info?.category ?? role.team}</span>
+                        </div>
+                        <p className="hint">{info?.ability ?? role.description}</p>
+                        {role.id === 'serial-killer' && <p className="hint">Recommended for 9+ players.</p>}
+                      </div>
+                      <div className="stepper">
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          onClick={() => setCount(role.id, count - 1)}
+                          disabled={count === 0}
+                          aria-label={`One fewer ${role.name}`}
+                        >
+                          −
+                        </button>
+                        <span className="stepper-count" aria-label={`${count} ${role.name}`}>
+                          {count}
+                        </span>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          onClick={() => setCount(role.id, count + 1)}
+                          disabled={unique && count >= 1}
+                          aria-label={`One more ${role.name}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )
+        })}
         {game.roleSlots.length < game.players.length && (
           <button
             type="button"

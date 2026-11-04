@@ -1,5 +1,5 @@
 import { ABSTAIN, type GameState, type VoteResult } from './types'
-import { EngineError, assertPhase } from './errors'
+import { EngineError, assertNoRevenge, assertPhase } from './errors'
 import { checkWin } from './win'
 import { eliminate } from './eliminate'
 import { enterPhase } from './phases'
@@ -34,8 +34,9 @@ export function tallyVotes(state: GameState): VoteResult {
 
   for (const voter of alive) {
     const target = state.votes[voter.id]
-    if (!target || target === ABSTAIN || !aliveIds.has(target)) abstain++
-    else counts[target] = (counts[target] ?? 0) + 1
+    const weight = voter.id === state.mayorId ? 3 : 1 // a revealed Mayor's vote counts three times
+    if (!target || target === ABSTAIN || !aliveIds.has(target)) abstain += weight
+    else counts[target] = (counts[target] ?? 0) + weight
   }
 
   const most = Math.max(0, ...Object.values(counts))
@@ -54,6 +55,7 @@ export function tallyVotes(state: GameState): VoteResult {
 
 export function closeVote(state: GameState): GameState {
   assertPhase(state, 'vote')
+  assertNoRevenge(state)
   if (state.voteResult) throw new EngineError('vote-closed', 'The vote is already closed')
   return { ...state, voteResult: tallyVotes(state) }
 }
@@ -67,6 +69,7 @@ export function reopenVote(state: GameState): GameState {
 // The narrator reveals the vote: the eliminated player (if any) is out, then night falls.
 export function revealVote(state: GameState): GameState {
   assertPhase(state, 'vote')
+  assertNoRevenge(state)
   const result = state.voteResult
   if (!result) throw new EngineError('vote-not-closed', 'Close the vote first')
 
@@ -80,5 +83,19 @@ export function revealVote(state: GameState): GameState {
     history: [...state.history, { kind: 'vote', round: state.round, eliminatedId: result.eliminatedId, voters }],
   }
   if (after.phase === 'ended') return toFinale(state, after)
-  return enterPhase(after, 'night', state.round)
+  return enterPhase({ ...after, blackmailed: null }, 'night', state.round)
+}
+
+// A Mayor reveals themselves during the day. From then on their vote counts three times,
+// and every roster shows them as the Mayor.
+export function revealMayor(state: GameState, playerId: string): GameState {
+  assertPhase(state, 'day', 'vote')
+  const me = state.players.find((p) => p.id === playerId)
+  if (!me?.alive || me.roleId !== 'mayor') throw new EngineError('not-allowed', 'Only a living Mayor can reveal')
+  if (state.mayorId) throw new EngineError('not-allowed', 'The Mayor has already revealed')
+  return {
+    ...state,
+    mayorId: playerId,
+    history: [...state.history, { kind: 'mayor', round: state.round, playerId }],
+  }
 }
