@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { CardFan } from '../components/CardFan'
 import { codeFromHash, isValidRoomCode, normalizeRoomCode, CODE_LENGTH } from '../../transport/roomCode'
 import type { RoomSession, SessionState } from '../roomSession'
+import { HowToPlay } from './HowToPlay'
+import { rolesHref } from '../route'
+import './Room.css'
 import './Home.css'
 
 type Mode = 'host' | 'join'
@@ -39,6 +42,7 @@ export function Home({ session, state }: HomeProps) {
   }
 
   return (
+    <div className="home-page">
     <section className="home">
       <div className="home-copy">
         <p className="eyebrow">Omertà</p>
@@ -48,6 +52,19 @@ export function Home({ session, state }: HomeProps) {
         </h1>
         <p className="home-lede">
           Phones run the night. Narrator runs the story.
+        </p>
+        <p className="home-links">
+          <a
+            href="#how-title"
+            onClick={(e) => {
+              e.preventDefault()
+              document.getElementById('how-title')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+          >
+            How to play
+          </a>
+          <span aria-hidden="true">·</span>
+          <a href={rolesHref()}>Roles</a>
         </p>
 
         <form className="panel stack home-panel" onSubmit={handleSubmit}>
@@ -139,5 +156,7 @@ export function Home({ session, state }: HomeProps) {
         <CardFan />
       </div>
     </section>
+    <HowToPlay />
+    </div>
   )
 }

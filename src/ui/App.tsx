@@ -7,6 +7,8 @@ import { PlayerLobby } from './screens/PlayerLobby'
 import { PlayerGame } from './screens/PlayerGame'
 import { NarratorGame } from './screens/NarratorGame'
 import { Closed } from './screens/Closed'
+import { RolesPage } from './roles/RolesPage'
+import { useRoute } from './route'
 
 // The room state decides the screen; there is no page routing.
 function Screen() {
@@ -37,10 +39,11 @@ function Screen() {
 }
 
 export default function App() {
+  const route = useRoute()
   return (
     <div className="app">
       <main className="app-main">
-        <Screen />
+        {route.page === 'roles' ? <RolesPage openRoleId={route.roleId} /> : <Screen />}
       </main>
 
       <footer className="app-footer">

@@ -1,4 +1,5 @@
 import { ROLES } from '../../roles'
+import { INFO, categoryLabel } from '../../roles/info'
 import { teamLabel } from '../helpers'
 import './RoleCard.css'
 
@@ -33,8 +34,8 @@ export function RoleCard({ roleId, faceUp, onToggle }: Props) {
             <span className="role-pip" />
           </span>
           <span className="role-monogram">{role.name[0]}</span>
-          <span className="role-team">{teamLabel(role.team)}</span>
-          <span className="role-desc">{role.description}</span>
+          <span className="role-team">{INFO[roleId] ? categoryLabel(INFO[roleId]) : teamLabel(role.team)}</span>
+          <span className="role-desc">{INFO[roleId]?.ability ?? role.description}</span>
           <span className="role-corner role-corner-bottom">
             {role.name}
             <span className="role-pip" />

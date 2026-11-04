@@ -6,6 +6,8 @@ import { countRoles, withRoleCount, fillWithVillagers, joinLink } from '../helpe
 import type { InRoomState, RoomSession } from '../roomSession'
 import { LeaveButton } from '../components/LeaveButton'
 import { isTestMode } from '../testMode'
+import { INFO } from '../../roles/info'
+import { RoleSheet } from '../roles/RoleSheet'
 
 interface Props {
   session: RoomSession
@@ -15,6 +17,7 @@ interface Props {
 
 export function HostLobby({ session, state, game }: Props) {
   const [copied, setCopied] = useState(false)
+  const [infoFor, setInfoFor] = useState<string | null>(null)
   const counts = countRoles(game.roleSlots)
   const problems = validateSetup(game)
   const link = joinLink(state.code, window.location, isTestMode && !import.meta.env.DEV)
@@ -113,10 +116,12 @@ export function HostLobby({ session, state, game }: Props) {
               <li key={role.id} className="role-row">
                 <div>
                   <div>
-                    {role.name}{' '}
+                    <button type="button" className="role-name-btn" onClick={() => setInfoFor(role.id)}>
+                      {role.name}
+                    </button>{' '}
                     <span className={`team-tag team-${role.team}`}>{role.team}</span>
                   </div>
-                  <p className="hint">{role.description}</p>
+                  <p className="hint">{INFO[role.id]?.ability ?? role.description}</p>
                 </div>
                 <div className="stepper">
                   <button
@@ -178,6 +183,8 @@ export function HostLobby({ session, state, game }: Props) {
         </button>
         <LeaveButton label="Close room" warning="Everyone in the lobby will be sent back to the start." onConfirm={session.leave} />
       </section>
+
+      {infoFor && <RoleSheet roleId={infoFor} onClose={() => setInfoFor(null)} />}
     </div>
   )
 }
