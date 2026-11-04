@@ -8,6 +8,7 @@ import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, Stamp, type PickOption } from '../components/PickList'
 import { usePick } from '../usePick'
+import { RoleSheet } from '../roles/RoleSheet'
 import { phaseLabel, teamOf } from '../helpers'
 import {
   ACTION_VERB, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText,
@@ -231,6 +232,7 @@ function YourLog({ view, nameOf }: { view: PlayerView; nameOf: NameOf }) {
 
 export function PlayerGame({ session, state, view }: Props) {
   const [faceUp, setFaceUp] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const nameOf = useNames(view)
   const me = view.me
   const roleId = me?.roleId
@@ -265,6 +267,12 @@ export function PlayerGame({ session, state, view }: Props) {
       <p className="hint" style={{ textAlign: 'center' }}>
         {faceUp ? 'Tap the card to hide it again.' : 'Make sure nobody is looking, then tap.'}
       </p>
+      {faceUp && (
+        <button type="button" className="btn btn-small btn-quiet" onClick={() => setDetailsOpen(true)}>
+          More details
+        </button>
+      )}
+      {detailsOpen && <RoleSheet roleId={roleId} onClose={() => setDetailsOpen(false)} />}
       {faceUp && view.teammates.length > 0 && (
         <div className="panel stack">
           <p className="section-label team-mafia">Your fellow Mafia</p>

@@ -1,0 +1,302 @@
+@import '../screens/Room.css';
+
+/* ---------- Page ---------- */
+.roles-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+.roles-nav {
+  display: flex;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link-btn .accent,
+.accent {
+  color: var(--dawn);
+}
+
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(48px, 10vw, 84px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.terms summary,
+.faction-rules summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.terms[open] summary,
+.faction-rules[open] summary {
+  margin-bottom: var(--space-4);
+}
+
+.terms-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.terms-list dt {
+  font-weight: 600;
+}
+
+.terms-list dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.night-order,
+.faction-rules ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.3em;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.faction {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.faction-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 34px;
+}
+
+.faction-town .faction-title { color: var(--town); }
+.faction-mafia .faction-title { color: var(--mafia); }
+.faction-neutral .faction-title { color: var(--neutral); }
+
+.faction-goal {
+  max-width: 62ch;
+}
+
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ---------- Cards ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 960px) {
+  .tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.tile {
+  --edge: var(--town);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  aspect-ratio: 5 / 6;
+  padding: var(--space-4) var(--space-3);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--edge);
+  background: var(--card-paper);
+  color: var(--card-ink);
+  text-decoration: none;
+  text-align: center;
+  transition: transform 150ms ease;
+}
+
+.tile:hover { transform: translateY(-2px); }
+.tile:focus-visible { outline: 3px solid var(--dawn); outline-offset: 3px; }
+
+.faction-mafia { --edge: var(--mafia); }
+.faction-neutral { --edge: var(--neutral); }
+
+.tile-art {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid rgba(31, 27, 23, 0.25);
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.faction-mafia .tile-art { color: var(--card-red); }
+
+.tile-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.tile.is-soon {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.tile.is-soon .tile-art {
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.soon {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Sheet (one role in full) ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(5, 7, 10, 0.72);
+  animation: fade-in 160ms ease;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-5) max(var(--space-5), env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--edge, var(--town));
+  background: var(--surface);
+  animation: slide-up 220ms cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+@media (min-width: 720px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet { border-radius: 20px; }
+}
+
+.sheet-top {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  min-height: 36px;
+}
+
+.sheet-grip {
+  width: 40px;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.sheet-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.sheet-art {
+  flex: none;
+  background: var(--card-paper);
+  color: var(--card-ink);
+}
+
+.faction-mafia .sheet-art { color: var(--card-red); }
+
+.sheet-tags {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sheet-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 34px;
+}
+
+.sheet-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.sheet-ability {
+  font-size: 19px;
+}
+
+.sheet-details {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--space-2);
+  color: var(--muted);
+}
+
+.sheet-nav {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .sheet-backdrop { animation: none; }
+}

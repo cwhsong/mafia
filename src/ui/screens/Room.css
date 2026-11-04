@@ -374,3 +374,15 @@ details.tools > summary {
   border-left: 2px solid var(--dawn);
   padding-left: var(--space-2);
 }
+
+/* A role name that opens its full rules */
+.role-name-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
