@@ -53,6 +53,7 @@ export function HostLobby({ session, state, game }: Props) {
 
       {state.error && <ErrorBanner message={state.error.message} onDismiss={session.dismissError} />}
 
+      <div className="stack lobby-side">
       <section className="panel stack">
         <p className="section-label">Room code</p>
         <p className="big-code">{state.code}</p>
@@ -101,6 +102,7 @@ export function HostLobby({ session, state, game }: Props) {
           </ul>
         )}
       </section>
+      </div>
 
       <section className="stack picker-section">
         <div className="section-head">
@@ -110,7 +112,9 @@ export function HostLobby({ session, state, game }: Props) {
           </span>
         </div>
         <div className="picker-factions">
-          {FACTIONS.map((faction) => {
+          {[['town'], ['mafia', 'neutral']].map((column) => (
+          <div key={column.join('-')} className="stack picker-column">
+          {FACTIONS.filter((f) => column.includes(f.id)).map((faction) => {
             const roles = AVAILABLE_ROLES.filter((r) => INFO[r.id]?.faction === faction.id)
             if (roles.length === 0) return null
             const groups = [null, ...faction.categories.map((c) => c.name)]
@@ -167,7 +171,12 @@ export function HostLobby({ session, state, game }: Props) {
               </div>
             )
           })}
+          </div>
+          ))}
         </div>
+      </section>
+
+      <section className="stack lobby-actions">
         {game.roleSlots.length < game.players.length && (
           <button
             type="button"
@@ -182,9 +191,6 @@ export function HostLobby({ session, state, game }: Props) {
             Fill the rest with Villagers
           </button>
         )}
-      </section>
-
-      <section className="stack">
         {problems.length > 0 && (
           <ul className="problems">
             {problems.map((p) => (

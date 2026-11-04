@@ -432,20 +432,45 @@ details.tools > summary {
   margin-top: var(--space-2);
 }
 
-/* The narrator's lobby: the role picker spreads its factions into columns on wide screens */
+/* The narrator's lobby on wide screens: room code, players and the Deal button on the
+   left; the role picker on the right, scrolling on its own, Town beside Mafia + Neutral */
+.picker-column {
+  gap: var(--space-6);
+}
+
 @media (min-width: 900px) {
   .room-wide {
     max-width: 1160px;
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr; /* header, players, then Deal right below them */
+    column-gap: var(--space-7);
+    row-gap: var(--space-5);
+    align-items: start;
   }
 
-  .room-wide > *:not(.picker-section) {
-    width: 100%;
-    max-width: 520px;
-    margin-inline: auto;
+  .room-wide > .room-header,
+  .room-wide > .banner {
+    grid-column: 1 / -1;
+  }
+
+  .room-wide > .lobby-side,
+  .room-wide > .lobby-actions {
+    grid-column: 1;
+  }
+
+  .room-wide > .picker-section {
+    grid-column: 2;
+    grid-row: span 2;
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - 2 * var(--space-4));
+    overflow-y: auto;
+    padding-right: var(--space-2);
   }
 
   .picker-factions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
 }
