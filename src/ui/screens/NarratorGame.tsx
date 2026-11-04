@@ -9,6 +9,8 @@ import { phaseLabel, nextPhaseLabel, causeForPhase, winnerLabel } from '../helpe
 import { beatText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
 import { LeaveButton } from '../components/LeaveButton'
 import type { InRoomState, RoomSession } from '../roomSession'
+import { useBots, isBot } from '../bots'
+import { isTestMode } from '../testMode'
 
 interface Props {
   session: RoomSession
@@ -309,6 +311,8 @@ function headingFor(game: GameState): { title: string; subtext: string } {
 
 // The narrator's dashboard once roles are dealt.
 export function NarratorGame({ session, state, game }: Props) {
+  // Test mode: the narrator's phone plays for the test players
+  useBots(session, game, isTestMode && game.players.some((p) => isBot(p.id)))
   const names = new Map(game.players.map((p) => [p.id, p.name]))
   const nameOf: NameOf = (id) => (id ? names.get(id) ?? 'someone' : 'nobody')
 
