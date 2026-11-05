@@ -269,7 +269,7 @@
 }
 
 .sheet-ability {
-  font-size: 19px;
+  color: var(--text);
 }
 
 .sheet-details {

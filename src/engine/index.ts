@@ -15,6 +15,6 @@ export {
   type Teammate,
 } from './views'
 
-export { eligibleTargets, nightChoice, nightOptions, type NightChoice } from './night'
+export { eligibleTargets, nightChoice, nightOptions, marksKill, killMarkTargets, type NightChoice } from './night'
 export { STEPS } from './steps'
 export { voteOptions, tallyVotes } from './vote'

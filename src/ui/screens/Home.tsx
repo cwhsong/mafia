@@ -87,9 +87,8 @@ export function Home({ session, state }: HomeProps) {
               : 'Ask the narrator for the room code.'}
           </p>
 
-          {/* Kept in place on Host (hidden), so switching tabs doesn't change the panel's height */}
-          {(
-            <label className="field" style={mode === 'join' ? undefined : { visibility: 'hidden' }} aria-hidden={mode !== 'join'}>
+          {mode === 'join' && (
+            <label className="field">
               Room code
               <input
                 className="input input-code"
@@ -103,7 +102,6 @@ export function Home({ session, state }: HomeProps) {
                 autoComplete="off"
                 spellCheck={false}
                 maxLength={8}
-                tabIndex={mode === 'join' ? 0 : -1}
               />
               {codeTyped && !codeOk && (
                 <span className="error">Codes use letters only, without I, L or O.</span>
