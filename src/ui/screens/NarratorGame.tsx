@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ABSTAIN, eligibleTargets, winnersOf, type GameState } from '../../engine'
+import { useMemo, useState } from 'react'
+import { ABSTAIN, eligibleTargets, playerView, winnersOf, type GameState } from '../../engine'
+import { PlayerGame } from './PlayerGame'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { GameOver } from '../components/GameOver'
@@ -22,7 +23,7 @@ type NameOf = (id: string | null | undefined) => string
 
 // ---------- The deal (always available to the narrator) ----------
 
-function Deal({ game }: { game: GameState }) {
+function Deal({ game, onView }: { game: GameState; onView?: (id: string) => void }) {
   return (
     <ul className="list">
       {game.players.map((p) => {
@@ -36,11 +37,38 @@ function Deal({ game }: { game: GameState }) {
                 <span className="hint"> · target: {game.players.find((t) => t.id === game.nemesisTargets[p.id])?.name}</span>
               )}
             </span>
-            <span className={`team-tag team-${role?.team}`}>{role?.name}</span>
+            <span className="row-end">
+              <span className={`team-tag team-${role?.team}`}>{role?.name}</span>
+              {onView && (
+                <button type="button" className="btn btn-small btn-quiet" onClick={() => onView(p.id)}>
+                  View
+                </button>
+              )}
+            </span>
           </li>
         )
       })}
     </ul>
+  )
+}
+
+// Test mode: see (and play) exactly what one player's phone shows, without another tab.
+function ViewAs({ session, state, game, playerId, onBack }: Props & { playerId: string; onBack: () => void }) {
+  const viewerSession = useMemo<RoomSession>(() => ({ ...session, leave: onBack }), [session, onBack])
+  const player = game.players.find((p) => p.id === playerId)
+  const role = player?.roleId ? ROLES[player.roleId] : undefined
+  return (
+    <div className="stack">
+      <div className="view-as-bar">
+        <span>
+          Viewing as <strong>{player?.name}</strong> <span className="hint">({role?.name})</span>
+        </span>
+        <button type="button" className="btn btn-small" onClick={onBack}>
+          Back to narrator
+        </button>
+      </div>
+      <PlayerGame session={viewerSession} state={state} view={playerView(game, playerId)} />
+    </div>
   )
 }
 
@@ -313,6 +341,7 @@ function headingFor(game: GameState): { title: string; subtext: string } {
 export function NarratorGame({ session, state, game }: Props) {
   // Test mode: the narrator's phone plays for the test players
   useBots(session, game, isTestMode && game.players.some((p) => isBot(p.id)))
+  const [viewing, setViewing] = useState<string | null>(null)
   const names = new Map(game.players.map((p) => [p.id, p.name]))
   const nameOf: NameOf = (id) => (id ? names.get(id) ?? 'someone' : 'nobody')
 
@@ -328,6 +357,10 @@ export function NarratorGame({ session, state, game }: Props) {
         <LeaveButton label="Close room" warning="Everyone will be sent back to the start." onConfirm={session.leave} />
       </div>
     )
+  }
+
+  if (viewing) {
+    return <ViewAs session={session} state={state} game={game} playerId={viewing} onBack={() => setViewing(null)} />
   }
 
   const { title, subtext } = headingFor(game)
@@ -388,7 +421,7 @@ export function NarratorGame({ session, state, game }: Props) {
 
       <section className="stack">
         <p className="section-label">{game.phase === 'finale' ? 'Everyone’s roles' : 'The deal'}</p>
-        <Deal game={game} />
+        <Deal game={game} onView={isTestMode ? setViewing : undefined} />
       </section>
 
       {game.phase !== 'finale' && <NarratorTools session={session} game={game} nameOf={nameOf} />}
