@@ -135,6 +135,7 @@ export interface DawnResult {
   round: number
   deaths: string[]
   causes?: Record<string, NightDeathCause>  // player id → how they died (older saves lack it)
+  promotes?: string | null                  // who becomes the Mafioso once these deaths are revealed
   beats: StoryBeat[]
   picks: Record<string, string>  // every pick, for the narrator's raw view
   endsGame: Team | null          // who would win once these deaths apply

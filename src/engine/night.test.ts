@@ -165,7 +165,7 @@ describe('resolving the night', () => {
     expect(state.dawn?.causes?.eve).toMatchObject({ kind: 'mafia' })
   })
 
-  it('writes the story for the narrator, including suspicions', () => {
+  it('writes the story for the narrator', () => {
     const state = resolve(play(night(), { ana: 'eve', ben: 'eve', cal: 'eve', dee: 'ben', fay: 'ana' }))
     expect(state.dawn?.beats).toEqual([
       { kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'eve', tieBroken: false },
@@ -173,9 +173,7 @@ describe('resolving the night', () => {
       expect.objectContaining({ kind: 'ability', ability: 'kill', targetIds: ['eve'] }), // the member who went
       expect.objectContaining({ kind: 'saved', targetId: 'eve' }),
       { kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' },
-      { kind: 'no-pick', playerId: 'eve' },
-      { kind: 'suspects', playerId: 'fay', targetId: 'ana' },
-      { kind: 'no-pick', playerId: 'gus' },
+      { kind: 'suspects', playerId: 'fay', targetId: 'ana' },   // Villagers who didn't pick aren't listed
     ])
     expect(state.dawn?.picks).toMatchObject({ ana: 'eve', dee: 'ben', fay: 'ana' })
   })

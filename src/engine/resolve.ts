@@ -216,7 +216,8 @@ function stepJail(night: Night) {
     if (a.kind !== 'jail' || !a.targetId) continue
     night.jailed.add(a.targetId)
     addProtector(night, a.targetId, a.actorId)
-    beat(night, a.actorId, 'jail', [a.targetId])
+    const lost = cancelledAction(night, a.targetId)
+    beat(night, a.actorId, 'jail', lost ? [a.targetId, lost.targetId] : [a.targetId], lost?.kind)
     if (a.option === 'execute') {
       night.attacks.push({ attackerId: a.actorId, targetId: a.targetId, source: 'execute', unstoppable: true })
       beat(night, a.actorId, 'execute', [a.targetId])
@@ -228,6 +229,14 @@ function stepJail(night: Night) {
     addProtector(night, a.actorId, a.actorId)
     beat(night, a.actorId, 'alert', [])
   }
+}
+
+// What a jailed or distracted player was going to do, for the narrator. The Mafia's kill is
+// told separately (someone else may go instead), so it isn't listed here.
+function cancelledAction(night: Night, playerId: string): { kind: string; targetId: string } | null {
+  const a = night.actions.find((x) => x.actorId === playerId && x.targetId)
+  if (!a || !a.targetId || (a.kind === 'kill' && isMafiaKiller(roleOf(playerById(night, playerId))))) return null
+  return { kind: a.kind, targetId: a.targetId }
 }
 
 // 2. Distractions land all at once, so two distractors can't cancel each other out.
@@ -243,7 +252,8 @@ function stepDistract(night: Night) {
       beat(night, actorId, 'distract', [target], 'killer')
     } else {
       night.distracted.add(target)
-      beat(night, actorId, 'distract', [target])
+      const lost = cancelledAction(night, target)
+      beat(night, actorId, 'distract', lost ? [target, lost.targetId] : [target], lost?.kind)
     }
   }
 }
@@ -524,7 +534,11 @@ function writeMessages(night: Night) {
     }
 
     if ((passive || !action) && pick) night.beats.push({ kind: 'suspects', playerId: player.id, targetId: pick })
-    if (!pick && !passive && !blocked) night.beats.push(skipped ? { kind: 'skipped', playerId: player.id } : { kind: 'no-pick', playerId: player.id })
+    // "Didn't act" is only for roles that could have done something (not the decoy pick, and
+    // not a Mafia killer, whose family's choice is told on its own)
+    if (action && !pick && !passive && !blocked && !isMafiaKiller(role)) {
+      night.beats.push(skipped ? { kind: 'skipped', playerId: player.id } : { kind: 'no-pick', playerId: player.id })
+    }
     if (night.saved.has(player.id) && !night.alerting.has(player.id)) last.push({ kind: 'was-saved', round })
 
     // A blocked player hears only what was done to them and what their team learned

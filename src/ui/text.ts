@@ -289,14 +289,14 @@ function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: Name
   const [t, ...rest] = beat.targetIds
   const list = (ids: string[]) => (ids.length > 0 ? joinNames(ids.map(nameOf)) : 'nobody')
   switch (beat.ability) {
-    case 'jail': return `${who} locked up ${nameOf(t)}.`
+    case 'jail': return `${who} locked up ${nameOf(t)}${lostAction(beat, nameOf)}.`
     case 'execute': return `${who} executed ${nameOf(t)}.`
     case 'alert': return `${who} went on alert.`
     case 'veteran-shot': return `${who} shot ${nameOf(t)}, who came to their house.`
     case 'distract':
       if (beat.detail === 'alert') return `${who} tried to distract ${nameOf(t)}, who was on alert.`
       if (beat.detail === 'killer') return `${who} distracted ${nameOf(t)}, who turned on them instead.`
-      return `${who} distracted ${nameOf(t)}.`
+      return `${who} distracted ${nameOf(t)}${lostAction(beat, nameOf)}.`
     case 'guard': return `${who} guarded ${nameOf(t)}.`
     case 'intercept': return `${who} stepped in front of ${nameOf(t)} and fought off ${nameOf(rest[0])}.`
     case 'vest': return `${who} wore a vest.`
@@ -424,6 +424,14 @@ export function rosterNotes(view: PlayerView): Map<string, RosterNote[]> {
   }
 
   return new Map([...notes].map(([id, m]) => [id, [...m.values()]]))
+}
+
+// ", so Med couldn't protect Eve": what a jailed or distracted player lost.
+function lostAction(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: NameOf): string {
+  const [who, target] = beat.targetIds
+  if (!beat.detail || !target) return ''
+  const verb = ACTION_VERB[beat.detail as NightChoice] ?? beat.detail
+  return target === who ? `, so ${nameOf(who)} couldn’t ${verb}` : `, so ${nameOf(who)} couldn’t ${verb} ${nameOf(target)}`
 }
 
 // ---------- The narrator's dawn: one short section per step ----------

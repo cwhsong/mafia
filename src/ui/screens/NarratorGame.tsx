@@ -215,6 +215,11 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
             ))}
           </ul>
         )}
+        {dawn.promotes && (
+          <p className="summary">
+            {nameOf(dawn.promotes)} ({roleOf(dawn.promotes)}) becomes the Mafioso: the family has no killer left.
+          </p>
+        )}
         <p className="hint">Players only hear who died. How you tell it is up to you.</p>
       </div>
 

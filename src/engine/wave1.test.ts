@@ -321,6 +321,14 @@ describe('Survivor and Amnesiac', () => {
 describe('skipping tonight', () => {
   const cast = { mafioso: 'Ana', veteran: 'Vet', medic: 'Med', detective: 'Det', villager: ['Eve', 'Fay', 'Gus'] }
 
+  it("tells the narrator what a distracted or jailed player couldn't do", () => {
+    let state = night1({ mafioso: 'Ana', consort: 'Cora', medic: 'Med', warden: 'War', detective: 'Det', villager: ['Eve', 'Fay'] })
+    state = night(state, { ana: 'eve', cora: 'med', med: 'eve', war: 'det', det: 'ana' })
+    expect(state.dawn?.beats).toContainEqual({ kind: 'ability', actorId: 'cora', ability: 'distract', targetIds: ['med', 'eve'], detail: 'protect' })
+    expect(state.dawn?.beats).toContainEqual({ kind: 'ability', actorId: 'war', ability: 'jail', targetIds: ['det', 'ana'], detail: 'investigate' })
+    expect(state.dawn?.beats).not.toContainEqual({ kind: 'no-pick', playerId: 'ana' })
+  })
+
   it('counts as a choice, does nothing, and tells the narrator', () => {
     let state = night1(cast)
     state = play(state, { vet: SKIP, med: SKIP, ana: 'vet', det: 'vet' })
@@ -352,6 +360,15 @@ describe('the Mafia without a killer', () => {
     expect(nightChoice(state, 'fra')).toBe('kill')
     state = night(state, { fra: 'eve' })
     expect(deaths(state)).toEqual(['eve'])
+  })
+
+  it('tells the narrator at dawn who will become the Mafioso', () => {
+    const state = night(night1({ mafioso: 'Ana', framer: 'Fra', villager: ['Eve', 'Fay', 'Gus', 'Hal'], vigilante: 'Vic' }))
+    expect(state.dawn?.promotes ?? null).toBeNull()
+    const n2 = night(nextNight(state), { vic: 'ana' })
+    expect(n2.dawn?.deaths).toEqual(['ana'])
+    expect(n2.dawn?.promotes).toBe('fra')
+    expect(reduce(n2, { type: 'reveal' }).players.find((p) => p.id === 'fra')?.roleId).toBe('mafioso')
   })
 
   it('keeps everyone as they are while a killer is alive', () => {

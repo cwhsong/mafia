@@ -153,6 +153,14 @@ describe('narrator deaths', () => {
 })
 
 describe('narrator dawn sections', () => {
+  it("says what a distracted player couldn't do", () => {
+    const roleOf = () => 'Consort'
+    expect(beatText({ kind: 'ability', actorId: 'cal', ability: 'distract', targetIds: ['dee', 'ana'], detail: 'protect' }, nameOf, roleOf))
+      .toBe('Cal (Consort) distracted Dee, so Dee couldn’t protect Ana.')
+    expect(beatText({ kind: 'ability', actorId: 'cal', ability: 'jail', targetIds: ['dee', 'dee'], detail: 'alert' }, nameOf, roleOf))
+      .toBe('Cal (Consort) locked up Dee, so Dee couldn’t go on alert.')
+  })
+
   const roleOf = (id: string) => ({ ana: 'Mafioso', ben: 'Godfather', cal: 'Medic', dee: 'Vigilante', fay: 'Framer' })[id] ?? 'Villager'
   it('groups the night by step, merges the Mafia lines, and drops suspicions', () => {
     const sections = dawnSections(

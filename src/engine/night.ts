@@ -2,7 +2,7 @@ import type { DawnResult, GameState, NightActionKind, PrivateResult } from './ty
 import { SKIP } from './types'
 import { EngineError, assertNoRevenge, assertPhase } from './errors'
 import { checkWin } from './win'
-import { eliminate } from './eliminate'
+import { eliminate, promotedAfter } from './eliminate'
 import { enterPhase } from './phases'
 import { toFinale } from './finale'
 import { runNight, roleOf, maxUsesFor, type Action } from './resolve'
@@ -203,6 +203,7 @@ export function resolveNight(state: GameState): GameState {
     beats: night.beats,
     picks: { ...picks, ...Object.fromEntries(alive.filter((p) => state.nightPicks[p.id] === SKIP).map((p) => [p.id, SKIP])) },
     endsGame: checkWin(afterDeaths),
+    promotes: night.deaths.length ? promotedAfter(state.seed, state.players, night.deaths, round) : null,
     roleChanges: night.roleChanges,
   }
 
