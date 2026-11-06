@@ -394,6 +394,16 @@ describe('Jester', () => {
     expect(deaths(state)).toEqual(['fay'])
   })
 
+  it("strikes first: the voter can't act that night, like being distracted, and only finds out at dawn", () => {
+    let state = applyCommands(night(night1({ jester: 'Jo', mafioso: 'Ana', medic: 'Med', villager: ['Eve', 'Fay', 'Gus'] })), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'jo', fay: 'jo', gus: 'jo', med: 'jo' })
+    state = applyCommands(state, [{ type: 'takeRevenge', playerId: 'jo', targetId: 'med' }])
+    state = night(state, { med: 'eve', ana: 'eve' })
+    expect(deaths(state).sort()).toEqual(['eve', 'med'])   // the Medic never got to protect Eve
+    expect(state.dawn?.beats).toContainEqual(expect.objectContaining({ ability: 'revenge', targetIds: ['med', 'eve'], detail: 'protect' }))
+    expect(said(state, 'med')).not.toContainEqual(expect.objectContaining({ kind: 'distracted' }))
+  })
+
   it('takes a random voter if they don’t choose, and is listed among the winners', () => {
     let state = applyCommands(night(night1(cast)), [{ type: 'reveal' }])
     state = vote(state, { eve: 'jo', fay: 'jo', gus: 'jo', hal: 'jo' })

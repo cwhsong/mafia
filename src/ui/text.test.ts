@@ -178,9 +178,8 @@ describe('narrator dawn sections', () => {
       roleOf,
     )
     expect(sections).toEqual([
-      { title: 'Protection', lines: ['Cal (Medic) protected Cal.'] },
-      { title: 'Disguises', lines: ['Fay (Framer) framed Dee.'] },
-      { title: 'Kills', lines: ['The Mafia (Ana and Ben) chose Cal; Ana went.', 'Cal was attacked by the Mafia, but saved.', 'Fay was shot by Dee (Vigilante).'] },
+      { title: '3 · Protection and deception', lines: ['Cal (Medic) protected Cal.', 'Fay (Framer) framed Dee.'] },
+      { title: '5 · Kills', lines: ['The Mafia (Ana and Ben) chose Cal; Ana went.', 'Cal was attacked by the Mafia, but saved.', 'Fay was shot by Dee (Vigilante).'] },
       { title: 'Didn’t act', lines: ['eve (Villager) didn’t choose anyone.'] },
     ])
   })

@@ -48,6 +48,7 @@ export interface Night {
   decoys: Record<string, string | null>         // no ability tonight: who they suspect
   jailed: Set<string>
   distracted: Set<string>
+  struck: Set<string>            // died at priority 1 (guilt, revenge): they can't act tonight
   alerting: Set<string>                         // Veterans on alert
   redirects: Map<string, string>                // Serial Killer → the distractor they kill instead
   visits: Visit[]
@@ -97,7 +98,7 @@ function playerById(night: Night, id: string): Player {
   return night.state.players.find((p) => p.id === id)!
 }
 
-const isBlocked = (night: Night, id: string) => night.jailed.has(id) || night.distracted.has(id)
+const isBlocked = (night: Night, id: string) => night.jailed.has(id) || night.distracted.has(id) || night.struck.has(id)
 const isMafia = (night: Night, id: string) => roleOf(playerById(night, id))?.team === 'mafia'
 
 // The role someone reads as tonight (framed, disguised, or their own).
@@ -210,7 +211,7 @@ function addProtector(night: Night, targetId: string, byId: string) {
   night.protectors.set(targetId, [...(night.protectors.get(targetId) ?? []), byId])
 }
 
-// 1. The Warden locks someone up (and may execute them); Veterans go on alert.
+// 0. The Warden locks someone up (and may execute them at priority 5).
 function stepJail(night: Night) {
   for (const a of night.actions) {
     if (a.kind !== 'jail' || !a.targetId) continue
@@ -223,11 +224,47 @@ function stepJail(night: Night) {
       beat(night, a.actorId, 'execute', [a.targetId])
     }
   }
+}
+
+// 1. Unstoppable: nothing can block these. A Veteran goes on alert; a guilty Vigilante and
+// the Jester's revenge target die here, so they can't act tonight (like being distracted,
+// but they only find out at dawn).
+function stepUnstoppable(night: Night) {
+  const { state, round } = night
   for (const a of night.actions) {
     if (a.kind !== 'alert' || !a.targetId || night.jailed.has(a.actorId)) continue
     night.alerting.add(a.actorId)
     addProtector(night, a.actorId, a.actorId)
     beat(night, a.actorId, 'alert', [])
+  }
+
+  for (const p of night.alive) {
+    if (state.guilt?.[p.id] === round && !night.deaths.includes(p.id)) {
+      night.deaths.push(p.id)
+      night.causes[p.id] = { kind: 'guilt', byId: null }
+      night.struck.add(p.id)
+      tell(night, p.id, { kind: 'guilt', round })
+      beat(night, p.id, 'guilt', [])
+    }
+  }
+
+  const revenge = state.pendingRevenge
+  if (revenge?.kind === 'jester' && revenge.round === round) {
+    const living = revenge.options.filter((id) => night.alive.some((p) => p.id === id) && !night.deaths.includes(id))
+    const chosen = state.nightPicks[revenge.playerId]
+    const targetId = living.includes(chosen)
+      ? chosen
+      : living.length > 0
+        ? living[Math.floor(rngFor(state, 'jester', round)() * living.length)]
+        : null
+    if (targetId) {
+      night.deaths.push(targetId)
+      night.causes[targetId] = { kind: 'revenge', byId: revenge.playerId }
+      night.struck.add(targetId)
+      tell(night, revenge.playerId, { kind: 'revenge', round, targetId })
+      const lost = cancelledAction(night, targetId)
+      beat(night, revenge.playerId, 'revenge', lost ? [targetId, lost.targetId] : [targetId], lost?.kind)
+    }
   }
 }
 
@@ -288,6 +325,19 @@ function stepProtect(night: Night) {
 }
 
 // 5. Framer and Impostor change how someone reads tonight.
+// 3. The Blackmailer silences someone for tomorrow (deception, with the Framer and Impostor).
+function stepBlackmail(night: Night) {
+  const { round } = night
+  for (const a of night.actions) {
+    if (a.kind !== 'blackmail' || !a.targetId || isBlocked(night, a.actorId)) continue
+    const t = a.targetId
+    night.blackmailedId = t
+    tell(night, a.actorId, { kind: 'blackmailed-them', round, targetId: t })
+    tell(night, t, { kind: 'blackmailed', round })
+    beat(night, a.actorId, 'blackmail', [t])
+  }
+}
+
 function stepDisguise(night: Night) {
   for (const a of night.actions) {
     if (!a.targetId || isBlocked(night, a.actorId)) continue
@@ -440,49 +490,15 @@ function stepInvestigate(night: Night) {
         beat(night, a.actorId, 'categorize', [t], category)
         break
       }
-      case 'blackmail': {
-        if (!t) break
-        night.blackmailedId = t
-        tell(night, a.actorId, { kind: 'blackmailed-them', round, targetId: t })
-        tell(night, t, { kind: 'blackmailed', round })
-        beat(night, a.actorId, 'blackmail', [t])
-        break
-      }
       default:
         break
     }
   }
 }
 
-// 9. Guilt, the Jester's revenge, and the Amnesiac remembering.
-function stepAftermath(night: Night) {
-  const { state, round } = night
-  for (const p of night.alive) {
-    if (state.guilt?.[p.id] === round && !night.deaths.includes(p.id)) {
-      night.deaths.push(p.id)
-      night.causes[p.id] = { kind: 'guilt', byId: null }
-      tell(night, p.id, { kind: 'guilt', round })
-      beat(night, p.id, 'guilt', [])
-    }
-  }
-
-  const revenge = state.pendingRevenge
-  if (revenge?.kind === 'jester' && revenge.round === round) {
-    const living = revenge.options.filter((id) => night.alive.some((p) => p.id === id) && !night.deaths.includes(id))
-    const chosen = state.nightPicks[revenge.playerId]
-    const targetId = living.includes(chosen)
-      ? chosen
-      : living.length > 0
-        ? living[Math.floor(rngFor(state, 'jester', round)() * living.length)]
-        : null
-    if (targetId) {
-      night.deaths.push(targetId)
-      night.causes[targetId] = { kind: 'revenge', byId: revenge.playerId }
-      tell(night, revenge.playerId, { kind: 'revenge', round, targetId })
-      beat(night, revenge.playerId, 'revenge', [targetId])
-    }
-  }
-
+// 6. The Amnesiac remembers who they were.
+function stepRemember(night: Night) {
+  const { round } = night
   for (const a of night.actions) {
     if (a.kind !== 'remember' || !a.targetId || isBlocked(night, a.actorId)) continue
     const roleId = playerById(night, a.targetId).roleId!
@@ -509,10 +525,11 @@ function writeMessages(night: Night) {
 
     if (role?.team === 'mafia') first.push({ kind: 'mafia-chose', round, targetId: night.mafia.targetId })
 
-    const blocked = night.jailed.has(player.id) || night.distracted.has(player.id)
+    const blocked = night.jailed.has(player.id) || night.distracted.has(player.id) || night.struck.has(player.id)
     const skipped = night.state.nightPicks[player.id] === SKIP
     if (night.jailed.has(player.id)) first.push({ kind: 'locked-up', round })
     else if (night.distracted.has(player.id)) first.push({ kind: 'distracted', round })
+    else if (night.struck.has(player.id)) { /* died before acting; they find out at dawn */ }
     else if (action && !passive) {
       if (!pick) {
         if (skipped) last.push({ kind: 'skipped', round, action: action.kind })
@@ -589,6 +606,7 @@ export function runNight(state: GameState, actions: Action[], decoys: Record<str
     decoys,
     jailed: new Set(),
     distracted: new Set(),
+    struck: new Set(),
     alerting: new Set(),
     redirects: new Map(),
     visits: [],
@@ -616,18 +634,20 @@ export function runNight(state: GameState, actions: Action[], decoys: Record<str
 
   const RUN: Record<(typeof STEPS)[number], (night: Night) => void> = {
     jail: stepJail,
+    unstoppable: stepUnstoppable,
     distract: (n) => {
       stepDistract(n)
       recordVisits(n)
     },
-    swap: () => {},
-    protect: stepProtect,
-    disguise: stepDisguise,
-    kill: stepKill,
+    protect: (n) => {
+      stepProtect(n)
+      stepDisguise(n)
+      stepBlackmail(n)
+    },
     investigate: stepInvestigate,
-    memory: () => {},
-    aftermath: (n) => {
-      stepAftermath(n)
+    kill: stepKill,
+    late: (n) => {
+      stepRemember(n)
       stepMemory(n)
     },
   }

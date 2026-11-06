@@ -316,7 +316,7 @@ function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: Name
     case 'hypnotize': return `${who} hypnotized ${nameOf(t)}: “${beat.detail ? FAKE_LABEL[beat.detail as FakeMessage] : ''}.”`
     case 'remember': return `${who} remembered being the ${beat.detail ? roleName(beat.detail) : '?'}.`
     case 'guilt': return `${who} died of guilt.`
-    case 'revenge': return `${who} took revenge on ${nameOf(t)}.`
+    case 'revenge': return `${who} took revenge on ${nameOf(t)}${lostAction(beat, nameOf)}.`
     default: return `${who} acted on ${list(beat.targetIds)}.`
   }
 }
@@ -441,9 +441,9 @@ export interface DawnSection {
   lines: string[]
 }
 
-// Which section each story line belongs to, in the order the night resolves.
+// Which section each story line belongs to: the night's priorities, 0 to 6.
 const SECTION_ORDER = [
-  'Lock-ups', 'Distractions', 'Protection', 'Disguises', 'Kills', 'Investigations', 'Blackmail', 'Memories', 'Aftermath', 'Didn’t act',
+  '0 · Lock-ups', '1 · Unstoppable', '2 · Distractions', '3 · Protection and deception', '4 · Investigations', '5 · Kills', '6 · Late effects', 'Didn’t act',
 ] as const
 type SectionTitle = (typeof SECTION_ORDER)[number]
 
@@ -452,11 +452,11 @@ function dawnSectionOf(beat: StoryBeat): SectionTitle | null {
     case 'mafia-targeted':
     case 'saved':
     case 'killed':
-      return 'Kills'
+      return '5 · Kills'
     case 'protected':
-      return 'Protection'
+      return '3 · Protection and deception'
     case 'investigated':
-      return 'Investigations'
+      return '4 · Investigations'
     case 'no-pick':
     case 'skipped':
       return 'Didn’t act'
@@ -464,15 +464,13 @@ function dawnSectionOf(beat: StoryBeat): SectionTitle | null {
       return null // filler for the narrator; still in "Show every pick"
     case 'ability':
       switch (beat.ability) {
-        case 'jail': case 'execute': case 'alert': return 'Lock-ups'
-        case 'distract': return 'Distractions'
-        case 'guard': case 'vest': return 'Protection'
-        case 'frame': case 'disguise': return 'Disguises'
-        case 'kill': case 'redirect': case 'blocked': case 'intercept': case 'veteran-shot': return 'Kills'
-        case 'blackmail': return 'Blackmail'
-        case 'hypnotize': return 'Memories'
-        case 'guilt': case 'revenge': case 'remember': return 'Aftermath'
-        default: return 'Investigations'
+        case 'jail': return '0 · Lock-ups'
+        case 'alert': case 'guilt': case 'revenge': return '1 · Unstoppable'
+        case 'distract': return '2 · Distractions'
+        case 'guard': case 'vest': case 'frame': case 'disguise': case 'blackmail': return '3 · Protection and deception'
+        case 'kill': case 'execute': case 'redirect': case 'blocked': case 'intercept': case 'veteran-shot': return '5 · Kills'
+        case 'hypnotize': case 'remember': return '6 · Late effects'
+        default: return '4 · Investigations'
       }
   }
 }
