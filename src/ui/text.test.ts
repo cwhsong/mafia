@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { PlayerView } from '../engine'
 import {
-  beatText, buildLog, deathCauseText, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT, rosterNotes,
+  beatText, buildLog, dawnSections, deathCauseText, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT, rosterNotes,
 } from './text'
 
 const names: Record<string, string> = { ana: 'Ana', ben: 'Ben', cal: 'Cal', dee: 'Dee', fay: 'Fay' }
@@ -39,18 +39,18 @@ describe('private messages', () => {
 describe('the narrator’s story', () => {
   it('words every kind of beat with names and roles', () => {
     expect(beatText({ kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'cal', tieBroken: false }, nameOf, roleOf))
-      .toBe('The Mafia (Ana, Ben) targeted Cal.')
+      .toBe('The Mafia (Ana and Ben) targeted Cal.')
     expect(beatText({ kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'cal', tieBroken: true }, nameOf, roleOf))
-      .toBe('The Mafia (Ana, Ben) targeted Cal. Their votes were tied, so it was settled at random.')
+      .toBe('The Mafia (Ana and Ben) targeted Cal. Their votes were tied, so it was settled at random.')
     expect(beatText({ kind: 'mafia-targeted', mafiaIds: ['ana'], targetId: null, tieBroken: false }, nameOf, roleOf))
       .toBe('The Mafia (Ana) chose nobody.')
-    expect(beatText({ kind: 'protected', medicId: 'cal', targetId: 'fay' }, nameOf, roleOf)).toBe('The Medic (Cal) protected Fay.')
+    expect(beatText({ kind: 'protected', medicId: 'cal', targetId: 'fay' }, nameOf, roleOf)).toBe('Cal (Medic) protected Fay.')
     expect(beatText({ kind: 'saved', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was saved.')
     expect(beatText({ kind: 'killed', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was killed.')
     expect(beatText({ kind: 'killed', targetId: 'fay', cause: { kind: 'mafia', byId: 'ana' } }, nameOf, roleOf)).toBe('Fay was killed by the Mafia.')
-    expect(beatText({ kind: 'saved', targetId: 'fay', cause: { kind: 'veteran', byId: 'cal' } }, nameOf, roleOf)).toBe('Fay was shot by the Medic (Cal) after visiting them, but saved.')
+    expect(beatText({ kind: 'saved', targetId: 'fay', cause: { kind: 'veteran', byId: 'cal' } }, nameOf, roleOf)).toBe('Fay was shot by Cal (Medic) after visiting them, but saved.')
     expect(beatText({ kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' }, nameOf, roleOf))
-      .toBe('The Detective (Dee) investigated Ben: suspicious.')
+      .toBe('Dee (Detective) investigated Ben: suspicious.')
     expect(beatText({ kind: 'suspects', playerId: 'fay', targetId: 'ana' }, nameOf, roleOf)).toBe('Fay suspects Ana.')
     expect(beatText({ kind: 'no-pick', playerId: 'fay' }, nameOf, roleOf)).toBe('Fay (Villager) didn’t choose anyone.')
   })
@@ -146,8 +146,34 @@ describe('narrator deaths', () => {
   const roleOf = (id: string) => ({ ana: 'Vigilante', cal: 'Veteran', dee: 'Mafioso' })[id] ?? 'Villager'
   it('says how each player died', () => {
     expect(deathCauseText('fay', { kind: 'mafia', byId: 'dee' }, nameOf, roleOf)).toBe('Fay, killed by the Mafia')
-    expect(deathCauseText('ben', { kind: 'role', byId: 'ana' }, nameOf, roleOf)).toBe('Ben, shot by the Vigilante (Ana)')
-    expect(deathCauseText('dee', { kind: 'veteran', byId: 'cal' }, nameOf, roleOf)).toBe('Dee, shot by the Veteran (Cal) after visiting them')
+    expect(deathCauseText('ben', { kind: 'role', byId: 'ana' }, nameOf, roleOf)).toBe('Ben, shot by Ana (Vigilante)')
+    expect(deathCauseText('dee', { kind: 'veteran', byId: 'cal' }, nameOf, roleOf)).toBe('Dee, shot by Cal (Veteran) after visiting them')
     expect(deathCauseText('dee', undefined, nameOf, roleOf)).toBe('Dee died.')
+  })
+})
+
+describe('narrator dawn sections', () => {
+  const roleOf = (id: string) => ({ ana: 'Mafioso', ben: 'Godfather', cal: 'Medic', dee: 'Vigilante', fay: 'Framer' })[id] ?? 'Villager'
+  it('groups the night by step, merges the Mafia lines, and drops suspicions', () => {
+    const sections = dawnSections(
+      [
+        { kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'cal', tieBroken: false },
+        { kind: 'protected', medicId: 'cal', targetId: 'cal' },
+        { kind: 'ability', actorId: 'fay', ability: 'frame', targetIds: ['dee'] },
+        { kind: 'ability', actorId: 'ana', ability: 'kill', targetIds: ['cal'] },
+        { kind: 'saved', targetId: 'cal', cause: { kind: 'mafia', byId: 'ana' } },
+        { kind: 'killed', targetId: 'fay', cause: { kind: 'role', byId: 'dee' } },
+        { kind: 'suspects', playerId: 'eve', targetId: 'ana' },
+        { kind: 'no-pick', playerId: 'eve' },
+      ],
+      nameOf,
+      roleOf,
+    )
+    expect(sections).toEqual([
+      { title: 'Protection', lines: ['Cal (Medic) protected Cal.'] },
+      { title: 'Disguises', lines: ['Fay (Framer) framed Dee.'] },
+      { title: 'Kills', lines: ['The Mafia (Ana and Ben) chose Cal; Ana went.', 'Cal was attacked by the Mafia, but saved.', 'Fay was shot by Dee (Vigilante).'] },
+      { title: 'Didn’t act', lines: ['eve (Villager) didn’t choose anyone.'] },
+    ])
   })
 })

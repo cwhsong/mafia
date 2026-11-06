@@ -7,7 +7,7 @@ import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, type PickOption } from '../components/PickList'
 import { phaseLabel, nextPhaseLabel, causeForPhase, winnerLabel } from '../helpers'
-import { beatText, deathCauseText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
+import { dawnSections, deathCauseText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
 import { LeaveButton } from '../components/LeaveButton'
 import type { InRoomState, RoomSession } from '../roomSession'
 import { useBots, isBot } from '../bots'
@@ -195,6 +195,17 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
 
   return (
     <section className="stack">
+      {dawnSections(dawn.beats, nameOf, roleOf).map((section) => (
+        <div key={section.title} className="dawn-step">
+          <p className="section-label">{section.title}</p>
+          <ul>
+            {section.lines.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
       <div className="panel stack">
         <p className="section-label">{dawn.deaths.length ? 'Who died' : 'Nobody died'}</p>
         {dawn.deaths.length > 0 && (
@@ -206,13 +217,6 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
         )}
         <p className="hint">Players only hear who died. How you tell it is up to you.</p>
       </div>
-
-      <p className="section-label">What happened, in order</p>
-      <ol className="beats">
-        {dawn.beats.map((beat, i) => (
-          <li key={i}>{beatText(beat, nameOf, roleOf)}</li>
-        ))}
-      </ol>
 
       <button type="button" className="btn btn-small btn-quiet" onClick={() => setShowPicks((s) => !s)}>
         {showPicks ? 'Hide every pick' : 'Show every pick'}
@@ -363,6 +367,7 @@ export function NarratorGame({ session, state, game }: Props) {
           winner={game.winner}
           players={game.players.map((p) => ({ ...p, roleId: p.roleId ?? '' }))}
           winners={winnersOf(game)}
+          subtext={winReason(game.winner)}
         />
         <LeaveButton label="Close room" warning="Everyone will be sent back to the start." onConfirm={session.leave} />
       </div>
