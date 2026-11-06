@@ -180,7 +180,6 @@ export interface GameState {
 
   // Wave 1 roles
   nightOptions: Record<string, string>    // tonight: player id → extra choice (fake message, 'execute')
-  killMarks: Record<string, string>       // tonight: Mafia support members' kill marks
   optionUses: Record<string, number>      // times each player has used their option (Warden's execution)
   mayorId: string | null                  // the revealed Mayor
   blackmailed: { playerId: string; round: number } | null  // can't speak during this day
@@ -203,7 +202,6 @@ export type Command =
   // Night and vote (players send these from their phones)
   | { type: 'submitAction'; playerId: string; targetId: string; option?: string }
   | { type: 'clearAction'; playerId: string }
-  | { type: 'markKill'; playerId: string; targetId: string | null }  // Mafia support members
   | { type: 'revealMayor'; playerId: string }
   | { type: 'takeRevenge'; playerId: string; targetId: string | null }  // Avenger / Jester; null = let it go
   | { type: 'castVote'; playerId: string; targetId: string }  // a player id or ABSTAIN
@@ -216,4 +214,4 @@ export type Command =
   | { type: 'revealWinner' }
 
 // Commands a player may send about themselves; everything else is the narrator's.
-export const PLAYER_COMMANDS = ['submitAction', 'clearAction', 'markKill', 'castVote', 'revealMayor', 'takeRevenge'] as const
+export const PLAYER_COMMANDS = ['submitAction', 'clearAction', 'castVote', 'revealMayor', 'takeRevenge'] as const

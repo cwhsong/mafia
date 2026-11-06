@@ -6,12 +6,13 @@ import { LeaveButton } from '../components/LeaveButton'
 import { RoleCard } from '../components/RoleCard'
 import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
-import { PickList, Stamp, type PickOption } from '../components/PickList'
+import { PickList, type PickOption } from '../components/PickList'
+import { SeatTable, TableCenter, type Pointer, type Seat } from '../components/SeatTable'
 import { usePick } from '../usePick'
 import { RoleSheet } from '../roles/RoleSheet'
 import { phaseLabel } from '../helpers'
 import {
-  ACTION_VERB, FAKE_LABEL, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText,
+  ACTION_VERB, FAKE_LABEL, buildLog, gameOverSubtext, lastNightText, lastVoteText, messageText, nightSubtext, publicEntryText, rosterNotes,
 } from '../text'
 import type { InRoomState, RoomSession } from '../roomSession'
 
@@ -56,9 +57,11 @@ function heading(view: PlayerView): { title: string; subtext: string } {
         title: 'Night falls',
         subtext: !view.night
           ? 'Close your eyes and follow the narrator.'
-          : view.night.myPick
-            ? 'Done. Waiting for everyone else… You can still change your pick.'
-            : nightSubtext(view.night.choice),
+          : view.night.choice === 'kill' && view.me?.roleId !== 'godfather' && view.teammates.some((t) => t.alive && t.roleId === 'godfather')
+            ? 'Suggest a kill. The Godfather has the final say.'
+            : view.night.myPick
+              ? 'Done. Waiting for everyone else… You can still change your pick.'
+              : nightSubtext(view.night.choice),
       }
     case 'dawn':
       return { title: 'Dawn breaks', subtext: 'Listen to the narrator’s story of the night.' }
@@ -90,7 +93,6 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
   const me = view.me!
   const pick = usePick(night.myPick)
   const [option, setOption] = useState<string | null>(night.myOption)
-  const teammateIds = new Set(view.teammates.map((t) => t.id))
   const passive = me.roleId ? ROLES[me.roleId]?.night?.target === 'none' : false
   const words = USE_WORD[night.choice]
   const usesLine =
@@ -119,30 +121,23 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
     )
   }
 
-  // Revenge and picks among the dead list only who can be chosen
-  const onlyTargets = night.choice === 'revenge' || night.choice === 'examine' || night.choice === 'remember'
-  const listed = onlyTargets ? view.players.filter((p) => night.targets.includes(p.id)) : view.players
-  const options: PickOption[] = listed.map((p) => ({
-    id: p.id,
-    label: p.name,
-    dead: !p.alive && night.choice !== 'examine' && night.choice !== 'remember',
-    disabled: !night.targets.includes(p.id),
-    note: p.id === me.id ? 'you' : teammateIds.has(p.id) ? 'Mafia' : !p.alive ? 'out' : p.id === view.mayorId ? 'Mayor' : undefined,
-    extra:
-      night.choice === 'kill' ? (
-        <span className="pick-extra">
-          {night.teamPicks
-            .filter((t) => t.targetId === p.id)
-            .map((t) => (
-              <Stamp key={t.playerId} name={t.name} />
-            ))}
-        </span>
-      ) : undefined,
-  }))
+  // Only people you can pick sit at the table tonight
+  const familyPicks = [...night.teamPicks, ...night.teamActions]
+  const seats: Seat[] = view.players
+    .filter((p) => night.targets.includes(p.id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      me: p.id === me.id,
+      tags: familyPicks.filter((t) => t.targetId === p.id).map((t) => t.name),
+    }))
 
   const needsOption = night.choice === 'hypnotize'
   const target = pick.pending ?? night.myPick
   const optionChanged = night.myPick !== null && !pick.pending && option !== night.myOption
+  const verb = option === 'execute' ? 'execute' : ACTION_VERB[night.choice]
+  const godfather = view.teammates.find((t) => t.alive && t.roleId === 'godfather')
+  const suggesting = night.choice === 'kill' && godfather && me.roleId !== 'godfather'
 
   function send(targetId: string) {
     const chosen = option && night.options.includes(option) ? option : undefined
@@ -150,13 +145,31 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
     pick.clear()
   }
 
+  const center = pick.pending ? (
+    <TableCenter label={verb.toUpperCase()} name={`${nameOf(pick.pending)}?`} note={suggesting ? `${godfather.name}’s mark is final` : 'not confirmed yet'} tone={night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined} />
+  ) : night.myPick ? (
+    <TableCenter label={suggesting ? 'YOUR PICK' : 'LOCKED IN'} name={nameOf(night.myPick)} note={suggesting ? `${godfather.name}’s mark is final` : verb} tone="dawn" />
+  ) : (
+    <TableCenter label={verb.toUpperCase()} note="Tap someone" tone={night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined} />
+  )
+
   return (
     <section className="stack">
+      <FamilyStrip view={view} />
       {passive && <p className="hint">Your ability works on its own tonight. Make a pick anyway, so nobody can tell.</p>}
       {usesLine && <p className="hint">{usesLine}</p>}
-      {night.killMark && <p className="section-label">Your ability</p>}
-      {onlyTargets && options.length === 0 && <p className="hint">Nobody to choose yet.</p>}
-      <PickList options={options} selectedIds={pick.selectedIds} confirmedId={night.myPick} onToggle={pick.toggle} />
+      {seats.length === 0 ? (
+        <p className="hint">Nobody to choose yet.</p>
+      ) : (
+        <SeatTable
+          seats={seats}
+          pendingId={pick.pending}
+          confirmedId={night.myPick}
+          onTap={pick.toggle}
+          center={center}
+          label={`Choose who to ${ACTION_VERB[night.choice]}`}
+        />
+      )}
 
       {target && night.options.length > 0 && night.choice === 'jail' && (
         <label className="check-row">
@@ -177,74 +190,41 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
         </div>
       )}
 
-      {pick.pending && (!needsOption || option) && (
-        <button type="button" className={`btn ${option === 'execute' ? 'btn-danger' : 'btn-primary'}`} onClick={() => send(pick.pending!)}>
-          {night.myPick
-            ? `Switch to ${nameOf(pick.pending)}`
-            : `Confirm: ${option === 'execute' ? 'execute' : ACTION_VERB[night.choice]} ${nameOf(pick.pending)}`}
-        </button>
-      )}
-      {optionChanged && (
-        <button type="button" className="btn btn-primary" onClick={() => send(night.myPick!)}>
-          Update choice
-        </button>
-      )}
-
-      {night.killMark && <KillMark session={session} view={view} nameOf={nameOf} />}
-      {night.teamActions.length > 0 && (
-        <div className="panel stack">
-          <p className="section-label team-mafia">Your family tonight</p>
-          {night.teamActions.map((t) => (
-            <p key={t.playerId} className="hint">
-              {t.name} ({ROLES[t.roleId]?.name}) → {nameOf(t.targetId)}
-            </p>
-          ))}
-        </div>
-      )}
+      <div className="confirm-bar">
+        {night.myPick && !pick.pending && <p className="hint">You can change this until the narrator ends the night.</p>}
+        {night.myPick && pick.pending && <p className="hint">Your pick: {nameOf(night.myPick)}</p>}
+        {pick.pending && (!needsOption || option) && (
+          <button type="button" className={`btn ${option === 'execute' ? 'btn-danger' : 'btn-primary'}`} onClick={() => send(pick.pending!)}>
+            {night.myPick
+              ? `Confirm: switch to ${nameOf(pick.pending)}`
+              : `Confirm: ${suggesting ? 'suggest' : verb} ${nameOf(pick.pending)}`}
+          </button>
+        )}
+        {optionChanged && (
+          <button type="button" className="btn btn-primary" onClick={() => send(night.myPick!)}>
+            Update choice
+          </button>
+        )}
+      </div>
     </section>
   )
 }
 
-// Mafia support members mark who the family should kill, alongside their own ability.
-function KillMark({ session, view, nameOf }: { session: RoomSession; view: PlayerView; nameOf: NameOf }) {
-  const night = view.night!
-  const mark = night.killMark!
-  const me = view.me!
-  const pick = usePick(mark.myMark)
-  const options: PickOption[] = view.players
-    .filter((p) => p.alive && !view.teammates.some((t) => t.id === p.id) && p.id !== me.id)
-    .map((p) => ({
-      id: p.id,
-      label: p.name,
-      disabled: !mark.targets.includes(p.id),
-      extra: (
-        <span className="pick-extra">
-          {night.teamPicks
-            .filter((t) => t.targetId === p.id)
-            .map((t) => (
-              <Stamp key={t.playerId} name={t.name} />
-            ))}
-        </span>
-      ),
-    }))
+// The Mafia's names and roles, above the night table.
+function FamilyStrip({ view }: { view: PlayerView }) {
+  const family = view.teammates.filter((t) => t.alive)
+  if (family.length === 0) return null
   return (
-    <section className="stack">
-      <p className="section-label team-mafia">Who should the family kill?</p>
-      <p className="hint">The Godfather’s mark is final; without him, the most-marked player is killed.</p>
-      <PickList options={options} selectedIds={pick.selectedIds} confirmedId={mark.myMark} onToggle={pick.toggle} />
-      {pick.pending && (
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            session.send({ type: 'markKill', playerId: me.id, targetId: pick.pending })
-            pick.clear()
-          }}
-        >
-          {mark.myMark ? `Switch mark to ${nameOf(pick.pending)}` : `Mark ${nameOf(pick.pending)}`}
-        </button>
-      )}
-    </section>
+    <div className="family-strip">
+      <p className="section-label team-mafia">Your family</p>
+      <div className="family-chips">
+        {family.map((t) => (
+          <span key={t.id} className="family-chip">
+            {t.name} · {ROLES[t.roleId]?.name}
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -307,47 +287,35 @@ function VoteAction({ session, view, nameOf }: { session: RoomSession; view: Pla
   const pick = usePick(vote.myVote)
   const canVote = Boolean(me?.alive) && !vote.closed
 
-  const votersFor = (id: string) =>
-    Object.entries(vote.votes).filter(([, target]) => target === id).map(([voter]) => nameOf(voter) + (voter === view.mayorId ? ' ×3' : ''))
   // A revealed Mayor's vote counts three times
+  const weightOf = (voter: string) => (voter === view.mayorId ? 3 : 1)
   const weight = (id: string) =>
-    Object.entries(vote.votes).filter(([, target]) => target === id).reduce((n, [voter]) => n + (voter === view.mayorId ? 3 : 1), 0)
+    Object.entries(vote.votes).filter(([, target]) => target === id).reduce((n, [voter]) => n + weightOf(voter), 0)
 
-  const playerOptions: PickOption[] = view.players
-    .filter((p) => p.alive)
-    .map((p) => {
-      const voters = votersFor(p.id)
-      return {
-        id: p.id,
-        label: p.name,
-        disabled: !vote.options.includes(p.id),
-        note: p.id === me?.id ? 'you' : p.id === view.mayorId ? 'Mayor' : undefined,
-        extra: (
-          <span className="pick-extra">
-            {voters.length > 0 && <span className="voters">{voters.join(', ')}</span>}
-            <span className="vote-count">{weight(p.id) || ''}</span>
-          </span>
-        ),
-      }
-    })
+  const alive = view.players.filter((p) => p.alive)
+  const seats: Seat[] = alive.map((p) => ({
+    id: p.id,
+    name: p.name,
+    me: p.id === me?.id,
+    disabled: !vote.options.includes(p.id),
+    top: weight(p.id) ? String(weight(p.id)) : undefined,
+  }))
+  const pointers: Pointer[] = Object.entries(vote.votes)
+    .filter(([, target]) => target !== ABSTAIN)
+    .map(([from, to]) => ({ from, to, mine: from === me?.id }))
 
-  const abstainers = votersFor(ABSTAIN)
-  const abstainTotal = weight(ABSTAIN) + vote.notVoted.reduce((n, id) => n + (id === view.mayorId ? 3 : 1), 0)
-  const abstainOption: PickOption = {
-    id: ABSTAIN,
-    label: 'Abstain',
-    disabled: !vote.options.includes(ABSTAIN),
-    extra: (
-      <span className="pick-extra">
-        <span className="voters">
-          {[...abstainers, vote.notVoted.length ? `${vote.notVoted.length} not voted` : '']
-            .filter(Boolean)
-            .join(', ')}
-        </span>
-        <span className="vote-count">{abstainTotal || ''}</span>
-      </span>
-    ),
-  }
+  const totals = alive.map((p) => ({ id: p.id, n: weight(p.id) })).filter((t) => t.n > 0)
+  const most = Math.max(0, ...totals.map((t) => t.n))
+  const leaders = totals.filter((t) => t.n === most)
+  const totalVotes = alive.reduce((n, p) => n + weightOf(p.id), 0)
+  const center =
+    leaders.length === 0 ? (
+      <TableCenter label="NO VOTES YET" note="Tap a seat to vote" />
+    ) : leaders.length === 1 ? (
+      <TableCenter label="LEADING" name={nameOf(leaders[0].id)} note={`${most} of ${totalVotes} votes`} />
+    ) : (
+      <TableCenter label="TIED" name={leaders.map((l) => nameOf(l.id)).join(' · ')} note={`${most} votes each`} />
+    )
 
   function confirm() {
     if (!pick.pending || !me) return
@@ -356,26 +324,47 @@ function VoteAction({ session, view, nameOf }: { session: RoomSession; view: Pla
   }
 
   const choiceName = (id: string) => (id === ABSTAIN ? 'abstain' : nameOf(id))
+  const abstainOn = pick.pending === ABSTAIN || (!pick.pending && vote.myVote === ABSTAIN)
 
   return (
     <section className="stack">
-      <PickList
-        options={[...playerOptions, abstainOption]}
-        selectedIds={pick.selectedIds}
+      <SeatTable
+        seats={seats}
+        pendingId={pick.pending}
         confirmedId={vote.myVote}
-        onToggle={pick.toggle}
+        onTap={pick.toggle}
+        center={center}
+        pointers={pointers}
         locked={!canVote}
+        label="Vote"
       />
-      {canVote && pick.pending && (
-        <button type="button" className="btn btn-primary" onClick={confirm}>
-          {vote.myVote
-            ? `Switch to ${choiceName(pick.pending)}`
-            : pick.pending === ABSTAIN
-              ? 'Confirm: abstain'
-              : `Confirm: vote for ${nameOf(pick.pending)}`}
+      <div className="abstain-row">
+        <button
+          type="button"
+          className={`abstain ${abstainOn ? (pick.pending === ABSTAIN ? 'is-pending' : 'is-confirmed') : ''}`}
+          onClick={() => pick.toggle(ABSTAIN)}
+          disabled={!canVote || !vote.options.includes(ABSTAIN)}
+          aria-pressed={abstainOn}
+        >
+          Abstain <span className="abstain-count">{weight(ABSTAIN)}</span>
         </button>
-      )}
-      <p className="hint">Not voting counts as abstaining. Votes are public, like pointing at the table.</p>
+        <span className="hint">{vote.notVoted.length} not voted</span>
+      </div>
+      <div className="confirm-bar">
+        {vote.myVote && <p className="hint">Your vote: {choiceName(vote.myVote)}</p>}
+        {!vote.myVote && !pick.pending && canVote && <p className="hint">You haven’t voted yet. Not voting counts as abstaining.</p>}
+        {canVote && pick.pending && (
+          <button type="button" className="btn btn-primary" onClick={confirm}>
+            {vote.myVote
+              ? pick.pending === ABSTAIN
+                ? 'Confirm: switch to abstain'
+                : `Confirm: switch vote to ${nameOf(pick.pending)}`
+              : pick.pending === ABSTAIN
+                ? 'Confirm: abstain'
+                : `Confirm: vote for ${nameOf(pick.pending)}`}
+          </button>
+        )}
+      </div>
     </section>
   )
 }
@@ -399,18 +388,61 @@ function YourLog({ view, nameOf }: { view: PlayerView; nameOf: NameOf }) {
   return (
     <section className="stack">
       <p className="section-label">Your log</p>
-      <div className="log">
+      <div className="log-key" aria-hidden="true">
+        <span><span className="log-key-public" />Everyone knows</span>
+        <span><span className="log-key-private" />Only you know</span>
+      </div>
+      <div className="ledger">
         {sections.map((section) => (
-          <div key={section.heading} className="log-section">
-            <p className="log-heading">{section.heading}</p>
-            {section.lines.map((line, i) => (
-              <p key={i} className={line.private ? 'log-private' : ''}>
-                {line.text}
-              </p>
-            ))}
+          <div key={section.heading} className="ledger-row">
+            <p className="ledger-when" aria-label={section.heading}>
+              <span className={`ledger-word ${section.night ? 'is-night' : 'is-day'}`}>{section.night ? 'Night' : 'Day'}</span>
+              <span className="ledger-num">{section.round}</span>
+            </p>
+            <div className="ledger-lines">
+              {section.lines.map((line, i) => (
+                <p key={i} className={line.private ? 'log-private' : 'log-public'}>
+                  {line.text}
+                </p>
+              ))}
+            </div>
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+// Everyone in the game, with what you know about them. Information only: picking
+// happens on the table. The dead fade to the bottom but keep their notes.
+function AtTheTable({ view }: { view: PlayerView }) {
+  const notes = rosterNotes(view)
+  const ordered = [...view.players.filter((p) => p.alive), ...view.players.filter((p) => !p.alive)]
+  return (
+    <section className="stack">
+      <div className="section-head">
+        <p className="section-label">At the table</p>
+        <span className="hint">{view.players.filter((p) => p.alive).length} still in</span>
+      </div>
+      <ul className="roster">
+        {ordered.map((p) => (
+          <li key={p.id} className={`roster-row ${p.alive ? '' : 'is-gone'} ${p.id === view.me?.id ? 'is-me' : ''}`}>
+            <span className="roster-disc" aria-hidden="true">{p.name[0]}</span>
+            <span className="roster-text">
+              <span className="roster-name">
+                {p.name}
+                {p.id === view.me?.id && <span className="you"> (you)</span>}
+                {!p.alive && <span className="visually-hidden"> (out)</span>}
+              </span>
+              {(notes.get(p.id) ?? []).map((n) => (
+                <span key={n.text} className={`roster-note ${n.private ? 'is-private' : ''} ${n.tone ? `tone-${n.tone}` : ''}`}>
+                  {n.text}
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
@@ -444,7 +476,6 @@ export function PlayerGame({ session, state, view }: Props) {
 
   const { title, subtext } = heading(view)
   const thisNight = view.messages.filter((r) => r.round === view.round)
-  const showPicker = (view.phase === 'night' && view.night) || view.phase === 'vote'
 
   const isDayOne = view.phase === 'day' && view.round === 1
   const canRevealMayor =
@@ -484,26 +515,7 @@ export function PlayerGame({ session, state, view }: Props) {
     <p className="muted">You’re watching this game.</p>
   )
 
-  const table = (
-    <section className="stack">
-      <div className="section-head">
-        <p className="section-label">At the table</p>
-        <span className="hint">{view.players.filter((p) => p.alive).length} still in</span>
-      </div>
-      <ul className="list">
-        {view.players.map((p) => (
-          <li key={p.id}>
-            <span>
-              <span className={p.alive ? '' : 'is-dead'}>{p.name}</span>
-              {p.id === me?.id && <span className="you"> (you)</span>}
-            </span>
-            {p.id === view.mayorId && <span className="team-tag team-town">Mayor</span>}
-            {!p.alive && <span className="hint">out</span>}
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
+  const table = <AtTheTable view={view} />
 
   return (
     <div className="room">
@@ -547,7 +559,7 @@ export function PlayerGame({ session, state, view }: Props) {
           {view.phase === 'vote' && view.vote && <VoteAction session={session} view={view} nameOf={nameOf} />}
 
           <YourLog view={view} nameOf={nameOf} />
-          {!showPicker && table}
+          {table}
           {roleSection}
         </>
       )}

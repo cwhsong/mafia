@@ -4,7 +4,7 @@ import { addPlayer, removePlayer, setRoleSlots } from './setup'
 import { dealRoles } from './deal'
 import { advancePhase } from './phases'
 import { eliminate } from './eliminate'
-import { submitAction, clearAction, markKill, resolveNight, reveal } from './night'
+import { submitAction, clearAction, resolveNight, reveal } from './night'
 import { takeRevenge } from './revenge'
 import { withDefaults } from './defaults'
 import { castVote, closeVote, reopenVote, revealVote, revealMayor } from './vote'
@@ -35,8 +35,6 @@ export function reduce(saved: GameState, command: Command): GameState {
       return submitAction(state, command.playerId, command.targetId, command.option)
     case 'clearAction':
       return clearAction(state, command.playerId)
-    case 'markKill':
-      return markKill(state, command.playerId, command.targetId)
     case 'revealMayor':
       return revealMayor(state, command.playerId)
     case 'takeRevenge':

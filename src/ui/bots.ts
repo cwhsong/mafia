@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
-  ABSTAIN, eligibleTargets, killMarkTargets, marksKill, nightChoice, nightOptions, voteOptions,
+  ABSTAIN, eligibleTargets, nightChoice, nightOptions, voteOptions,
   type Command, type GameState,
 } from '../engine'
 import type { RoomSession } from './roomSession'
@@ -45,11 +45,6 @@ export function botMoves(state: GameState, done: Set<string>, rand: Rand = Math.
         const options = nightOptions(state, p.id)
         const option = choice === 'hypnotize' ? pickOne(options, rand) : options.includes('execute') && rand() < 0.15 ? 'execute' : undefined
         commands.push({ type: 'submitAction', playerId: p.id, targetId: pickOne(targets, rand), ...(option ? { option } : {}) })
-      }
-
-      if (marksKill(state, p.id)) {
-        const marks = killMarkTargets(state, p.id)
-        if (marks.length) commands.push({ type: 'markKill', playerId: p.id, targetId: pickOne(marks, rand) })
       }
     }
 

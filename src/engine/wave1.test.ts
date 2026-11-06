@@ -43,22 +43,28 @@ function vote(state: GameState, votes: Record<string, string>): GameState {
 describe('the Mafia', () => {
   const cast = { godfather: 'Don', mafioso: 'Ana', consort: 'Cora', villager: ['Eve', 'Fay', 'Gus', 'Hal'], bartender: 'Bea' }
 
-  it("follows the Godfather's mark over everyone else's", () => {
-    const state = applyCommands(night1(cast), [
+  it("follows the Godfather's pick over the Mafiosos'", () => {
+    const state = applyCommands(night1({ ...cast, mafioso: ['Ana', 'Abe'] }), [
       { type: 'submitAction', playerId: 'don', targetId: 'eve' },
       { type: 'submitAction', playerId: 'ana', targetId: 'fay' },
-      { type: 'markKill', playerId: 'cora', targetId: 'fay' },
+      { type: 'submitAction', playerId: 'abe', targetId: 'fay' },
     ])
     expect(deaths(resolve(state))).toEqual(['eve'])
   })
 
-  it('counts support members’ marks when there is no Godfather mark', () => {
-    const state = applyCommands(night1(cast), [
+  it('goes with the most-picked target when the Godfather makes no pick', () => {
+    const state = applyCommands(night1({ ...cast, mafioso: ['Ana', 'Abe', 'Ari'] }), [
       { type: 'submitAction', playerId: 'ana', targetId: 'eve' },
-      { type: 'markKill', playerId: 'cora', targetId: 'fay' },
-      { type: 'markKill', playerId: 'cora', targetId: 'eve' },
+      { type: 'submitAction', playerId: 'abe', targetId: 'fay' },
+      { type: 'submitAction', playerId: 'ari', targetId: 'fay' },
     ])
-    expect(deaths(resolve(state))).toEqual(['eve'])
+    expect(deaths(resolve(state))).toEqual(['fay'])
+  })
+
+  it("gives support members only their own ability, not a say in the kill", () => {
+    const state = night1(cast)
+    expect(nightChoice(state, 'cora')).toBe('distract')
+    expect(eligibleTargets(state, 'cora')).not.toContain('don')
   })
 
   it('sends the Mafioso to carry out the kill, not the Godfather', () => {

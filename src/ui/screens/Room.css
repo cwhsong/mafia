@@ -272,21 +272,6 @@
   flex-shrink: 0;
 }
 
-/* Mafia teammates' picks: small red seals */
-.stamp {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  border: 2px solid var(--mafia);
-  background: rgba(208, 70, 61, 0.15);
-  color: var(--mafia);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
 /* Who voted for whom */
 .voters {
   font-size: 13px;
@@ -321,13 +306,6 @@
   border: 1px solid var(--border);
 }
 
-.log {
-  padding: var(--space-4);
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
 .warning {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius);
@@ -349,30 +327,6 @@ details.tools > summary {
   cursor: pointer;
   color: var(--muted);
   font-size: 15px;
-}
-
-/* Your log */
-.log-section + .log-section {
-  margin-top: var(--space-3);
-}
-
-.log-heading {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: var(--space-1);
-}
-
-.log-section p:not(.log-heading) {
-  color: var(--text);
-  font-size: 15px;
-}
-
-.log-private {
-  border-left: 2px solid var(--dawn);
-  padding-left: var(--space-2);
 }
 
 /* A role name that opens its full rules */
@@ -500,5 +454,426 @@ details.tools > summary {
 }
 
 .view-as-bar .btn {
+  white-space: nowrap;
+}
+
+/* ---------- The table: tap a seat, then confirm ---------- */
+.seat-table {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  aspect-ratio: 342 / 470;
+  margin-bottom: var(--space-3);
+}
+
+.seat-table-center {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  top: 20%;
+  bottom: 20%;
+  padding: var(--space-4);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.table-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.table-label.tone-dawn { color: var(--dawn); }
+.table-label.tone-mafia { color: var(--mafia); }
+
+.table-name {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.table-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.seat-pointers {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.seat-pointers line {
+  stroke: #6b7280;
+  stroke-width: 2.5;
+  stroke-dasharray: 4 8;
+  stroke-linecap: round;
+  animation: march 0.9s linear infinite;
+}
+
+.seat-pointers line.is-mine {
+  stroke: var(--dawn);
+}
+
+@keyframes march {
+  to { stroke-dashoffset: -24; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat-pointers line { animation: none; }
+}
+
+.seat {
+  --disc: 56px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.seat-table-sm .seat { --disc: 46px; width: 64px; }
+.seat-table-xs .seat { --disc: 38px; width: 54px; }
+
+.seat:disabled {
+  cursor: default;
+}
+
+.seat-top,
+.seat-name {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.seat-count {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.seat-tag {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--mafia);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.seat-disc {
+  display: grid;
+  place-items: center;
+  width: var(--disc);
+  height: var(--disc);
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-display);
+  font-size: calc(var(--disc) * 0.42);
+  font-weight: 600;
+}
+
+.seat-name {
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seat.is-me .seat-disc { border-color: var(--town); }
+
+.seat:disabled .seat-disc { opacity: 0.55; }
+
+.seat.is-pending {
+  transform: translate(-50%, calc(-50% - 8px));
+}
+
+.seat.is-pending .seat-disc {
+  border: 2px dashed var(--dawn);
+  background: #2a2117;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.55);
+}
+
+.seat.is-confirmed .seat-disc {
+  border-color: var(--card-paper);
+  background: var(--card-paper);
+  color: var(--card-ink);
+}
+
+.seat.is-pending .seat-name,
+.seat.is-confirmed .seat-name {
+  font-weight: 700;
+}
+
+.seat:focus-visible {
+  outline: none;
+}
+
+.seat:focus-visible .seat-disc {
+  outline: 2px solid var(--dawn);
+  outline-offset: 3px;
+}
+
+.abstain-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.abstain {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.abstain.is-pending { border: 1px dashed var(--dawn); background: #2a2117; }
+.abstain.is-confirmed { border-color: var(--card-paper); background: var(--card-paper); color: var(--card-ink); }
+
+.abstain-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  background: var(--border);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.confirm-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.confirm-bar .btn {
+  width: 100%;
+}
+
+/* The Mafia, above the night table */
+.family-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.family-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.family-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #2a1514;
+  font-size: 14px;
+}
+
+.family-chip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mafia);
+}
+
+/* ---------- Your log: a ledger ---------- */
+.log-key {
+  display: flex;
+  gap: var(--space-4);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.log-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.log-key-public {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.log-key-private {
+  width: 2px;
+  height: 12px;
+  background: var(--dawn);
+}
+
+.ledger {
+  border-top: 1px solid var(--border);
+}
+
+.ledger-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  column-gap: var(--space-3);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ledger-when {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ledger-word {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.ledger-word.is-night { color: var(--town); }
+.ledger-word.is-day { color: var(--dawn); }
+
+.ledger-num {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ledger-lines {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.ledger-lines p {
+  font-size: 15px;
+  line-height: 1.4;
+  color: #d9d2c5;
+}
+
+.log-public {
+  padding-left: 12px;
+}
+
+.log-private {
+  border-left: 2px solid var(--dawn);
+  padding-left: 10px;
+}
+
+/* ---------- At the table: who's in the game, and what you know ---------- */
+.roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.roster-row.is-gone {
+  opacity: 0.4;
+}
+
+.roster-disc {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.roster-row.is-me .roster-disc { border-color: var(--town); }
+
+.roster-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.roster-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.roster-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.roster-note.is-private {
+  border-left: 2px solid var(--dawn);
+  padding-left: var(--space-2);
+}
+
+.roster-note.tone-good { color: var(--town); }
+.roster-note.tone-bad { color: var(--danger); }
+.roster-note.tone-mayor { color: var(--dawn); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
 }
