@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ABSTAIN, eligibleTargets, playerView, winnersOf, type GameState } from '../../engine'
+import { ABSTAIN, SKIP, eligibleTargets, playerView, winnersOf, type GameState } from '../../engine'
 import { PlayerGame } from './PlayerGame'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
@@ -230,7 +230,7 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
                 <span>
                   {p.name} <span className="hint">({roleOf(p.id)})</span>
                 </span>
-                <span className="muted">{dawn.picks[p.id] ? nameOf(dawn.picks[p.id]) : 'no pick'}</span>
+                <span className="muted">{dawn.picks[p.id] === SKIP ? 'skipped' : dawn.picks[p.id] ? nameOf(dawn.picks[p.id]) : 'no pick'}</span>
               </li>
             ))}
         </ul>

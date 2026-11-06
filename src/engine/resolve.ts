@@ -10,6 +10,7 @@ import type {
   RoleDef,
   StoryBeat,
 } from './types'
+import { SKIP } from './types'
 import { NOT_A_VISIT, STEPS } from './steps'
 import { createRng, shuffle } from './rng'
 import { ROLES, ROLE_LIST, detectiveSees } from '../roles'
@@ -499,11 +500,13 @@ function writeMessages(night: Night) {
     if (role?.team === 'mafia') first.push({ kind: 'mafia-chose', round, targetId: night.mafia.targetId })
 
     const blocked = night.jailed.has(player.id) || night.distracted.has(player.id)
+    const skipped = night.state.nightPicks[player.id] === SKIP
     if (night.jailed.has(player.id)) first.push({ kind: 'locked-up', round })
     else if (night.distracted.has(player.id)) first.push({ kind: 'distracted', round })
     else if (action && !passive) {
       if (!pick) {
-        if (!isMafiaKiller(role)) last.push({ kind: 'no-pick', round, action: action.kind })
+        if (skipped) last.push({ kind: 'skipped', round, action: action.kind })
+        else if (!isMafiaKiller(role)) last.push({ kind: 'no-pick', round, action: action.kind })
       }
       else if (action.kind === 'protect') {
         last.push(night.saved.has(pick) ? { kind: 'patient-saved', round, targetId: pick } : { kind: 'protected', round, targetId: pick })
@@ -521,7 +524,7 @@ function writeMessages(night: Night) {
     }
 
     if ((passive || !action) && pick) night.beats.push({ kind: 'suspects', playerId: player.id, targetId: pick })
-    if (!pick && !passive && !blocked) night.beats.push({ kind: 'no-pick', playerId: player.id })
+    if (!pick && !passive && !blocked) night.beats.push(skipped ? { kind: 'skipped', playerId: player.id } : { kind: 'no-pick', playerId: player.id })
     if (night.saved.has(player.id) && !night.alerting.has(player.id)) last.push({ kind: 'was-saved', round })
 
     // A blocked player hears only what was done to them and what their team learned

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ABSTAIN, type FakeMessage, type PlayerView, type PrivateResult } from '../../engine'
+import { ABSTAIN, SKIP, type FakeMessage, type PlayerView, type PrivateResult } from '../../engine'
 import { ROLES } from '../../roles'
 import { RoomHeader, ErrorBanner } from '../components/RoomHeader'
 import { LeaveButton } from '../components/LeaveButton'
@@ -98,24 +98,34 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
   const usesLine =
     night.usesLeft !== null && words ? `${night.usesLeft} ${night.usesLeft === 1 ? words[0] : words[1]} left.` : null
 
-  // An on/off ability (Veteran's alert, Survivor's vest)
+  // An on/off ability (Veteran's alert, Survivor's vest): using it or staying home are both a choice
   if (night.choice === 'alert' || night.choice === 'vest') {
+    const alert = night.choice === 'alert'
     const on = night.myPick === me.id
-    const label = night.choice === 'alert' ? 'Go on alert tonight' : 'Wear a vest tonight'
+    const off = night.myPick === SKIP
+    const use = () => session.send({ type: 'submitAction', playerId: me.id, targetId: me.id })
+    const pass = () => session.send({ type: 'submitAction', playerId: me.id, targetId: SKIP })
     return (
       <section className="stack">
         {usesLine && <p className="hint">{usesLine} Using it counts once the night ends.</p>}
-        {on ? (
+        {on || off ? (
           <>
-            <p className="summary">{night.choice === 'alert' ? 'You’re on alert tonight. ✓' : 'You’re wearing a vest tonight. ✓'}</p>
-            <button type="button" className="btn btn-small btn-quiet" onClick={() => session.send({ type: 'clearAction', playerId: me.id })}>
-              {night.choice === 'alert' ? 'Stay home instead' : 'Save the vest instead'}
+            <p className="summary">
+              {on ? (alert ? 'You’re on alert tonight. ✓' : 'You’re wearing a vest tonight. ✓') : 'You’re staying home tonight. ✓'}
+            </p>
+            <button type="button" className="btn btn-small btn-quiet" onClick={on ? pass : use}>
+              {on ? (alert ? 'Stay home instead' : 'Save the vest instead') : alert ? 'Go on alert instead' : 'Wear a vest instead'}
             </button>
           </>
         ) : (
-          <button type="button" className="btn btn-primary" onClick={() => session.send({ type: 'submitAction', playerId: me.id, targetId: me.id })}>
-            {label}
-          </button>
+          <div className="choice-pair">
+            <button type="button" className="btn btn-primary" onClick={use}>
+              {alert ? 'Go on alert' : 'Wear a vest'}
+            </button>
+            <button type="button" className="btn" onClick={pass}>
+              {alert ? 'Stay home' : 'Save the vest'}
+            </button>
+          </div>
         )}
       </section>
     )
@@ -146,7 +156,12 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
   }
 
   const tone = night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined
-  const center = pick.pending ? (
+  const skipped = night.myPick === SKIP
+  const center = pick.pending === SKIP ? (
+    <TableCenter label="SKIP" name="Nobody?" note="not confirmed yet" />
+  ) : skipped && !pick.pending ? (
+    <TableCenter label="SKIP" name="Nobody" note="locked in" tone="dawn" />
+  ) : pick.pending ? (
     <TableCenter label={verb.toUpperCase()} name={`${nameOf(pick.pending)}?`} note="not confirmed yet" tone={tone} />
   ) : night.myPick ? (
     <TableCenter label={verb.toUpperCase()} name={nameOf(night.myPick)} note="locked in" tone={tone ?? 'dawn'} />
@@ -165,20 +180,32 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
         <SeatTable
           seats={seats}
           pendingId={pick.pending}
-          confirmedId={night.myPick}
+          confirmedId={skipped ? null : night.myPick}
           onTap={pick.toggle}
           center={center}
           label={`Choose who to ${ACTION_VERB[night.choice]}`}
         />
       )}
+      {!passive && (
+        <div className="abstain-row">
+          <button
+            type="button"
+            className={`abstain ${pick.pending === SKIP ? 'is-pending' : skipped && !pick.pending ? 'is-confirmed' : ''}`}
+            onClick={() => pick.toggle(SKIP)}
+            aria-pressed={pick.pending === SKIP || (skipped && !pick.pending)}
+          >
+            Skip tonight
+          </button>
+        </div>
+      )}
 
-      {target && night.options.length > 0 && night.choice === 'jail' && (
+      {target && target !== SKIP && night.options.length > 0 && night.choice === 'jail' && (
         <label className="check-row">
           <input type="checkbox" checked={option === 'execute'} onChange={(e) => setOption(e.target.checked ? 'execute' : null)} />
           Execute {nameOf(target)} (once a game; it can’t be stopped)
         </label>
       )}
-      {target && needsOption && (
+      {target && target !== SKIP && needsOption && (
         <div className="stack">
           <p className="section-label">Memory to plant</p>
           <div className="chips">
@@ -193,10 +220,15 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
 
       <div className="confirm-bar">
         {night.myPick && !pick.pending && <p className="hint">You can change this until the narrator ends the night.</p>}
-        {night.myPick && pick.pending && <p className="hint">Your pick: {nameOf(night.myPick)}</p>}
-        {pick.pending && (!needsOption || option) && (
+        {night.myPick && pick.pending && <p className="hint">Your pick: {skipped ? 'skip tonight' : nameOf(night.myPick)}</p>}
+        {pick.pending === SKIP && (
+          <button type="button" className="btn btn-primary" onClick={() => send(SKIP)}>
+            Confirm: skip tonight
+          </button>
+        )}
+        {pick.pending && pick.pending !== SKIP && (!needsOption || option) && (
           <button type="button" className={`btn ${option === 'execute' ? 'btn-danger' : 'btn-primary'}`} onClick={() => send(pick.pending!)}>
-            {night.myPick
+            {night.myPick && !skipped
               ? `Confirm: switch to ${nameOf(pick.pending)}`
               : `Confirm: ${suggesting ? 'suggest' : verb} ${nameOf(pick.pending)}`}
           </button>

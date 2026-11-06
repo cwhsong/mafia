@@ -77,6 +77,7 @@ export type PrivateResult =
   | { kind: 'mafia-chose'; round: number; targetId: string | null }
   | { kind: 'slept'; round: number; suspectedId: string | null } // no night action (the decoy pick is kept)
   | { kind: 'no-pick'; round: number; action: NightActionKind }  // had an action but didn't choose
+  | { kind: 'skipped'; round: number; action: NightActionKind }  // chose not to act
   // Wave 1 roles: what you did
   | { kind: 'shortlist'; round: number; targetId: string; roleIds: string[] }
   | { kind: 'watched'; round: number; targetId: string; visitorIds: string[] }
@@ -115,6 +116,7 @@ export type StoryBeat =
   | { kind: 'investigated'; detectiveId: string; targetId: string; result: DetectiveResult }
   | { kind: 'suspects'; playerId: string; targetId: string }
   | { kind: 'no-pick'; playerId: string }
+  | { kind: 'skipped'; playerId: string }   // chose not to act tonight
   // Every other ability, worded by the narrator screen (see beatText)
   | { kind: 'ability'; actorId: string; ability: BeatAbility; targetIds: string[]; detail?: string }
 
@@ -142,6 +144,8 @@ export interface DawnResult {
 // ---------- Vote ----------
 
 export const ABSTAIN = 'abstain'
+// A night pick that means "not tonight": it counts as a choice, but nothing happens.
+export const SKIP = 'skip'
 
 export interface VoteResult {
   round: number

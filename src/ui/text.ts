@@ -101,6 +101,8 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
       return result.targetId ? `The Mafia chose ${nameOf(result.targetId)}.` : 'The Mafia didn’t choose anyone.'
     case 'slept':
       return QUIET_NIGHT[(result.round - 1) % QUIET_NIGHT.length]
+    case 'skipped':
+      return result.action === 'alert' || result.action === 'vest' ? 'You stayed home tonight.' : 'You chose not to act tonight.'
     case 'no-pick':
       return result.action === 'protect'
         ? 'You didn’t protect anyone.'
@@ -275,6 +277,8 @@ export function beatText(beat: StoryBeat, nameOf: NameOf, roleOf: (id: string) =
       return `${nameOf(beat.playerId)} suspects ${nameOf(beat.targetId)}.`
     case 'no-pick':
       return `${nameOf(beat.playerId)} (${roleOf(beat.playerId)}) didn’t choose anyone.`
+    case 'skipped':
+      return `${nameOf(beat.playerId)} (${roleOf(beat.playerId)}) chose to skip tonight.`
     case 'ability':
       return abilityBeat(beat, nameOf, roleOf)
   }
@@ -446,6 +450,7 @@ function dawnSectionOf(beat: StoryBeat): SectionTitle | null {
     case 'investigated':
       return 'Investigations'
     case 'no-pick':
+    case 'skipped':
       return 'Didn’t act'
     case 'suspects':
       return null // filler for the narrator; still in "Show every pick"

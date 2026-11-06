@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Command, GameState, PrivateResult } from './types'
+import { SKIP, type Command, type GameState, type PrivateResult } from './types'
 import { applyCommands, reduce } from './reduce'
 import { eligibleTargets, nightChoice } from './night'
 import { checkWin, winnersOf } from './win'
@@ -313,6 +313,29 @@ describe('Survivor and Amnesiac', () => {
     state = reduce(state, { type: 'reveal' })
     expect(state.players.find((p) => p.id === 'amy')?.roleId).toBe('medic')
     expect(state.history).toContainEqual({ kind: 'remembered', round: 2, roleId: 'medic' })
+  })
+})
+
+// ---------- Skipping a night ----------
+
+describe('skipping tonight', () => {
+  const cast = { mafioso: 'Ana', veteran: 'Vet', medic: 'Med', detective: 'Det', villager: ['Eve', 'Fay', 'Gus'] }
+
+  it('counts as a choice, does nothing, and tells the narrator', () => {
+    let state = night1(cast)
+    state = play(state, { vet: SKIP, med: SKIP, ana: 'vet', det: 'vet' })
+    expect(state.nightPicks.vet).toBe(SKIP)
+    state = resolve(state)
+    expect(deaths(state)).toEqual(['vet'])          // no alert: the Detective visits safely, the Mafia kill
+    expect(state.dawn?.picks.med).toBe(SKIP)
+    expect(state.dawn?.beats).toContainEqual({ kind: 'skipped', playerId: 'med' })
+    expect(said(state, 'med')).toContainEqual({ kind: 'skipped', round: 1, action: 'protect' })
+  })
+
+  it("can't be used to pass on a Jester's revenge", () => {
+    let state = applyCommands(night(night1({ jester: 'Jo', mafioso: 'Ana', villager: ['Eve', 'Fay', 'Gus', 'Hal'] })), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'jo', fay: 'jo', gus: 'jo', hal: 'jo' })
+    expectEngineError(() => reduce(state, { type: 'submitAction', playerId: 'jo', targetId: SKIP }), 'invalid-target')
   })
 })
 

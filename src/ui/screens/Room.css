@@ -901,3 +901,10 @@ details.tools > summary {
   padding-top: var(--space-3);
   border-top: 1px solid var(--surface-2);
 }
+
+/* Veteran / Survivor: use it tonight, or stay home */
+.choice-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
