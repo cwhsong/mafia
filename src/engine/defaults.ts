@@ -7,7 +7,6 @@ export function withDefaults(state: GameState): GameState {
     ...state,
     uses: state.uses ?? {},
     nightOptions: state.nightOptions ?? {},
-    killMarks: state.killMarks ?? {},
     optionUses: state.optionUses ?? {},
     mayorId: state.mayorId ?? null,
     blackmailed: state.blackmailed ?? null,

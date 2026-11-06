@@ -30,7 +30,6 @@ export function createGame(hostId: string, seed: number): GameState {
     history: [],
     finale: null,
     nightOptions: {},
-    killMarks: {},
     optionUses: {},
     mayorId: null,
     blackmailed: null,

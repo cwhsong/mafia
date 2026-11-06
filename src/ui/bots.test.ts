@@ -21,7 +21,6 @@ describe('bots', () => {
     const commands = botMoves(state, new Set(), seq(0.1, 0.6, 0.3))
     state = applyCommands(state, commands) // throws if any pick is invalid
     expect(Object.keys(state.nightPicks).length).toBeGreaterThanOrEqual(6)
-    expect(state.killMarks['test-p1']).toBeDefined() // the Framer marks a kill too
     expect(() => reduce(state, { type: 'resolveNight' })).not.toThrow()
   })
 

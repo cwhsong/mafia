@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import type { PlayerView } from '../engine'
 import {
-  beatText, buildLog, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT,
+  beatText, buildLog, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT, rosterNotes,
 } from './text'
 
 const names: Record<string, string> = { ana: 'Ana', ben: 'Ben', cal: 'Cal', dee: 'Dee', fay: 'Fay' }
@@ -68,9 +69,9 @@ describe('your log', () => {
       nameOf,
     )
     expect(log).toEqual([
-      { heading: 'Night 1', lines: [{ text: 'Dee is suspicious.', private: true }, { text: 'Ana died last night.', private: false }] },
-      { heading: 'Day 2', lines: [{ text: 'Dee was voted out (Ben, Cal, Fay).', private: false }] },
-      { heading: 'Night 2', lines: [{ text: 'Cal is not suspicious.', private: true }, { text: 'Nobody died last night.', private: false }] },
+      { heading: 'Night 1', night: true, round: 1, lines: [{ text: 'Dee is suspicious.', private: true }, { text: 'Ana died last night.', private: false }] },
+      { heading: 'Day 2', night: false, round: 2, lines: [{ text: 'Dee was voted out (Ben, Cal, Fay).', private: false }] },
+      { heading: 'Night 2', night: true, round: 2, lines: [{ text: 'Cal is not suspicious.', private: true }, { text: 'Nobody died last night.', private: false }] },
     ])
   })
 
@@ -106,5 +107,35 @@ describe('summaries', () => {
     expect(gameOverSubtext(true)).toBe('Winner winner chicken dinner.')
     expect(gameOverSubtext(false)).toBe('GGs.')
     expect(gameOverSubtext(null)).toBeNull()
+  })
+})
+
+describe('at the table', () => {
+  const base = {
+    teammates: [], mayorId: null, nemesisTarget: null, messages: [],
+  } as unknown as PlayerView
+
+  it('keeps the latest suspicion about someone, as a private note', () => {
+    const notes = rosterNotes({
+      ...base,
+      messages: [
+        { kind: 'investigated', round: 1, targetId: 'dee', result: 'suspicious' },
+        { kind: 'investigated', round: 3, targetId: 'dee', result: 'not-suspicious' },
+      ],
+    })
+    expect(notes.get('dee')).toEqual([{ text: 'Not suspicious', private: true, tone: 'good' }])
+  })
+
+  it('shows the Mayor to everyone, and your family and learned roles only to you', () => {
+    const notes = rosterNotes({
+      ...base,
+      mayorId: 'fay',
+      teammates: [{ id: 'gus', name: 'Gus', roleId: 'godfather', alive: true }],
+      messages: [{ kind: 'examined', round: 2, targetId: 'eve', roleId: 'doctor' }],
+    })
+    expect(notes.get('fay')).toEqual([{ text: 'Mayor', private: false, tone: 'mayor' }])
+    expect(notes.get('gus')).toEqual([{ text: 'Mafia · Godfather', private: true, tone: 'bad' }])
+    expect(notes.get('eve')?.[0]).toMatchObject({ private: true })
+    expect(notes.has('ana')).toBe(false)
   })
 })

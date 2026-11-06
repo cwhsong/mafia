@@ -4,7 +4,7 @@ import { checkWin } from './win'
 import { eliminate } from './eliminate'
 import { enterPhase } from './phases'
 import { toFinale } from './finale'
-import { runNight, roleOf, isMafiaKiller, maxUsesFor, type Action } from './resolve'
+import { runNight, roleOf, maxUsesFor, type Action } from './resolve'
 
 // What a player does at night. Roles without a night action (or who can't use it tonight)
 // make a decoy "suspect" pick, so everyone at the table is tapping their phone.
@@ -90,17 +90,6 @@ export function nightOptions(state: GameState, playerId: string): string[] {
   return [...ability.options]
 }
 
-// Mafia members who don't make the kill themselves still mark who they want dead.
-export function marksKill(state: GameState, playerId: string): boolean {
-  const role = roleOf(player(state, playerId))
-  return !!player(state, playerId)?.alive && role?.team === 'mafia' && !isMafiaKiller(role)
-}
-
-export function killMarkTargets(state: GameState, playerId: string): string[] {
-  if (!marksKill(state, playerId)) return []
-  return state.players.filter((p) => p.alive && roleOf(p)?.team !== 'mafia').map((p) => p.id)
-}
-
 export function submitAction(state: GameState, playerId: string, targetId: string, option?: string): GameState {
   assertPhase(state, 'night')
   const me = player(state, playerId)
@@ -126,18 +115,6 @@ export function clearAction(state: GameState, playerId: string): GameState {
   delete nightPicks[playerId]
   delete nightOpts[playerId]
   return { ...state, nightPicks, nightOptions: nightOpts }
-}
-
-export function markKill(state: GameState, playerId: string, targetId: string | null): GameState {
-  assertPhase(state, 'night')
-  if (!marksKill(state, playerId)) throw new EngineError('not-allowed', 'Only Mafia support members mark a kill')
-  const killMarks = { ...(state.killMarks ?? {}) }
-  if (targetId === null) delete killMarks[playerId]
-  else {
-    if (!killMarkTargets(state, playerId).includes(targetId)) throw new EngineError('invalid-target', 'You can’t mark that player')
-    killMarks[playerId] = targetId
-  }
-  return { ...state, killMarks }
 }
 
 // Night → Dawn. Works out everything that happened, step by step (see steps.ts),

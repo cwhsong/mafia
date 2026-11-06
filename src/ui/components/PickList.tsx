@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 export interface PickOption {
   id: string
@@ -6,7 +6,7 @@ export interface PickOption {
   disabled?: boolean
   dead?: boolean
   note?: ReactNode   // small text after the name, e.g. "you", "Mafia", "out"
-  extra?: ReactNode  // shown at the right of the row, e.g. Mafia stamps or voters
+  extra?: ReactNode  // shown at the right of the row, e.g. voters
 }
 
 interface Props {
@@ -43,21 +43,5 @@ export function PickList({ options, selectedIds, confirmedId = null, onToggle, l
         )
       })}
     </ul>
-  )
-}
-
-// Small seal-style stamp marking a Mafia teammate's pick. Tap it to see whose it is.
-export function Stamp({ name }: { name: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <button
-      type="button"
-      className="stamp"
-      onClick={() => setOpen((o) => !o)}
-      title={`${name}'s pick`}
-      aria-label={`${name}'s pick`}
-    >
-      {open ? `${name}’s pick` : name[0]}
-    </button>
   )
 }

@@ -46,8 +46,9 @@ export const FACTIONS: FactionInfo[] = [
     name: 'Mafia',
     goal: 'Match or outnumber everyone else, with no Serial Killer alive.',
     rules: [
-      "The Mafia know each other from the start and see each other's action picks and kill votes live.",
-      "Every member marks who to kill. The Godfather's mark is final; without him, the most-marked player is killed.",
+      "The Mafia know each other from the start and see each other's picks live.",
+      "Everyone makes one pick a night. The Godfather and Mafiosos pick who to kill; support members use their own ability.",
+      "The Godfather's pick is final. Without him, the Mafiosos' most-picked target is killed.",
       'One Mafioso, picked at random each night and shown to the team, carries out the kill. That’s who a Lookout sees and a Bodyguard kills. With no Mafioso, the Godfather does it himself.',
       'Nobody is promoted when the Godfather dies. If every killer dies, a random member becomes a Mafioso, losing their old ability.',
       'Every Mafia result shows on every Mafia phone, since there’s no team chat in person.',

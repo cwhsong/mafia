@@ -14,7 +14,7 @@ export function advancePhase(state: GameState): GameState {
 // Moves to a phase, clearing whatever belonged to the one before it.
 export function enterPhase(state: GameState, phase: Phase, round: number): GameState {
   const fresh: Partial<GameState> = {}
-  const noPicks = { nightPicks: {}, nightOptions: {}, killMarks: {} }
+  const noPicks = { nightPicks: {}, nightOptions: {} }
   if (phase === 'night') Object.assign(fresh, { ...noPicks, votes: {}, voteResult: null })
   if (phase === 'day') Object.assign(fresh, { ...noPicks, dawn: null })
   if (phase === 'vote') Object.assign(fresh, { ...noPicks, votes: {}, voteResult: null, dawn: null })

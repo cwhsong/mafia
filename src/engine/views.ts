@@ -1,6 +1,6 @@
 import type { GameState, Phase, PrivateResult, PublicEntry, Team } from './types'
 import { ROLES } from '../roles'
-import { eligibleTargets, nightChoice, nightOptions, killMarkTargets, marksKill, type NightChoice } from './night'
+import { eligibleTargets, nightChoice, nightOptions, type NightChoice } from './night'
 import { maxUsesFor } from './resolve'
 import { winnersOf } from './win'
 import { withDefaults } from './defaults'
@@ -30,9 +30,8 @@ export interface NightView {
   options: string[]          // extra choices with the pick (Hypnotist's fake message, Warden's 'execute')
   myOption: string | null
   usesLeft: number | null    // bullets, alerts, vests left; null = unlimited
-  teamPicks: { playerId: string; name: string; targetId: string }[]  // Mafia only: teammates' kill marks, live
+  teamPicks: { playerId: string; name: string; targetId: string }[]  // Mafia only: the killers' kill picks, live
   teamActions: { playerId: string; name: string; roleId: string; targetId: string }[]  // Mafia only: teammates' ability picks
-  killMark: { targets: string[]; myMark: string | null } | null       // Mafia support: who you'd like killed
 }
 
 // The vote, which is public, as in pointing around the table.
@@ -106,7 +105,6 @@ export function playerView(saved: GameState, playerId: string): PlayerView {
     const r = ROLES[state.players.find((p) => p.id === id)?.roleId ?? '']
     return r?.night?.kind === 'kill' && r.night.sharedWithTeam === true
   }
-  const markOf = (id: string) => (isKiller(id) ? state.nightPicks[id] : state.killMarks[id])
   const night: NightView | null = choice
     ? {
         choice,
@@ -116,14 +114,11 @@ export function playerView(saved: GameState, playerId: string): PlayerView {
         myOption: state.nightOptions[playerId] ?? null,
         usesLeft: max === undefined ? null : max - (state.uses[playerId] ?? 0),
         teamPicks: teammates
-          .filter((t) => t.alive && markOf(t.id))
-          .map((t) => ({ playerId: t.id, name: t.name, targetId: markOf(t.id)! })),
+          .filter((t) => t.alive && isKiller(t.id) && state.nightPicks[t.id])
+          .map((t) => ({ playerId: t.id, name: t.name, targetId: state.nightPicks[t.id] })),
         teamActions: teammates
           .filter((t) => t.alive && !isKiller(t.id) && state.nightPicks[t.id])
           .map((t) => ({ playerId: t.id, name: t.name, roleId: t.roleId, targetId: state.nightPicks[t.id] })),
-        killMark: marksKill(state, playerId)
-          ? { targets: killMarkTargets(state, playerId), myMark: state.killMarks[playerId] ?? null }
-          : null,
       }
     : null
   const revenge = state.pendingRevenge?.playerId === playerId && state.phase !== 'finale' && state.phase !== 'ended'

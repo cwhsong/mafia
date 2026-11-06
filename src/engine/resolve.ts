@@ -121,16 +121,14 @@ export function categoryOf(roleId: string): string {
 
 // ---------- The Mafia's kill ----------
 
-// The Godfather's mark is final; otherwise the most-marked target wins, with a tie broken
-// at random (reproducibly, from the seed). Then one living Mafioso is picked to carry it out.
+// Only the killers (Godfather, Mafiosos) pick a kill. The Godfather's pick is final; otherwise
+// the most-picked target wins, with a tie broken at random (reproducibly, from the seed).
+// Then one living Mafioso is picked to carry it out.
 function chooseMafiaKill(night: Night) {
   const { state } = night
   const mafia = night.alive.filter((p) => roleOf(p)?.team === 'mafia')
   const killers = mafia.filter((p) => isMafiaKiller(roleOf(p)))
-  const markOf = (p: Player): string | null =>
-    isMafiaKiller(roleOf(p))
-      ? (night.actions.find((a) => a.actorId === p.id)?.targetId ?? null)
-      : (state.killMarks?.[p.id] ?? null)
+  const markOf = (p: Player): string | null => night.actions.find((a) => a.actorId === p.id)?.targetId ?? null
 
   const godfather = mafia.find((p) => p.roleId === 'godfather')
   let targetId: string | null = godfather ? markOf(godfather) : null
@@ -138,7 +136,7 @@ function chooseMafiaKill(night: Night) {
 
   if (!targetId) {
     const counts = new Map<string, number>()
-    for (const m of mafia) {
+    for (const m of killers) {
       const target = markOf(m)
       if (target) counts.set(target, (counts.get(target) ?? 0) + 1)
     }

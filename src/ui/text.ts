@@ -1,4 +1,4 @@
-import type { FakeMessage, NightChoice, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
+import type { FakeMessage, NightChoice, PlayerView, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
 import { ROLES } from '../roles'
 
 const roleName = (id: string) => ROLES[id]?.name ?? id
@@ -192,6 +192,8 @@ export interface LogLine {
 
 export interface LogSection {
   heading: string // "Day 2", "Night 1"
+  night: boolean
+  round: number
   lines: LogLine[]
 }
 
@@ -241,7 +243,7 @@ export function buildLog(history: PublicEntry[], results: PrivateResult[], nameO
 
   return [...sections.values()]
     .sort((a, b) => a.round - b.round || Number(a.night) - Number(b.night))
-    .map((s) => ({ heading: `${s.night ? 'Night' : 'Day'} ${s.round}`, lines: s.lines }))
+    .map((s) => ({ heading: `${s.night ? 'Night' : 'Day'} ${s.round}`, night: s.night, round: s.round, lines: s.lines }))
 }
 
 // One line of the narrator's story at dawn. roleOf gives a player's role name.
@@ -331,4 +333,54 @@ export function winReason(winner: Team): string {
     : winner === 'mafia'
       ? 'The Mafia now match the town.'
       : 'The Serial Killer is the last one standing.'
+}
+
+// ---------- At the table ----------
+
+// A short fact under a player's name on the roster. Private notes are things only you know.
+export interface RosterNote {
+  text: string
+  private: boolean
+  tone?: 'good' | 'bad' | 'mayor'
+}
+
+// What you know about each player, by id. The log has the full story; this keeps only
+// what's useful to glance at: suspicion, roles you've learned, your team, the Mayor.
+// A newer result about someone replaces an older one of the same kind.
+export function rosterNotes(view: PlayerView): Map<string, RosterNote[]> {
+  const notes = new Map<string, Map<string, RosterNote>>()
+  const set = (id: string, key: string, note: RosterNote) => {
+    if (!notes.has(id)) notes.set(id, new Map())
+    notes.get(id)!.set(key, note)
+  }
+
+  if (view.mayorId) set(view.mayorId, 'mayor', { text: 'Mayor', private: false, tone: 'mayor' })
+  for (const t of view.teammates) set(t.id, 'team', { text: `Mafia · ${roleName(t.roleId)}`, private: true, tone: 'bad' })
+  if (view.nemesisTarget) set(view.nemesisTarget, 'nemesis', { text: 'Your target', private: true })
+
+  for (const r of view.messages) {
+    switch (r.kind) {
+      case 'investigated':
+        set(r.targetId, 'suspicion', r.result === 'suspicious'
+          ? { text: 'Suspicious', private: true, tone: 'bad' }
+          : { text: 'Not suspicious', private: true, tone: 'good' })
+        break
+      case 'shortlist': {
+        const names = r.roleIds.map(roleName)
+        set(r.targetId, 'role', { text: names.join(' / '), private: true })
+        break
+      }
+      case 'examined':
+        set(r.targetId, 'role', { text: roleName(r.roleId), private: true })
+        break
+      case 'categorized':
+        set(r.targetId, 'category', { text: r.category, private: true })
+        break
+      case 'jailed':
+        if (r.executedRole) set(r.targetId, 'role', { text: roleName(r.executedRole), private: true })
+        break
+    }
+  }
+
+  return new Map([...notes].map(([id, m]) => [id, [...m.values()]]))
 }
