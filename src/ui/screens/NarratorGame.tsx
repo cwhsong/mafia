@@ -7,7 +7,7 @@ import { GameOver } from '../components/GameOver'
 import { ScreenHeading } from '../components/ScreenHeading'
 import { PickList, type PickOption } from '../components/PickList'
 import { phaseLabel, nextPhaseLabel, causeForPhase, winnerLabel } from '../helpers'
-import { beatText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
+import { beatText, deathCauseText, joinNames, lastNightText, lastVoteText, publicEntryText, winReason } from '../text'
 import { LeaveButton } from '../components/LeaveButton'
 import type { InRoomState, RoomSession } from '../roomSession'
 import { useBots, isBot } from '../bots'
@@ -195,6 +195,19 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
 
   return (
     <section className="stack">
+      <div className="panel stack">
+        <p className="section-label">{dawn.deaths.length ? 'Who died' : 'Nobody died'}</p>
+        {dawn.deaths.length > 0 && (
+          <ul className="death-list">
+            {dawn.deaths.map((id) => (
+              <li key={id}>{deathCauseText(id, dawn.causes?.[id], nameOf, roleOf)}</li>
+            ))}
+          </ul>
+        )}
+        <p className="hint">Players only hear who died. How you tell it is up to you.</p>
+      </div>
+
+      <p className="section-label">What happened, in order</p>
       <ol className="beats">
         {dawn.beats.map((beat, i) => (
           <li key={i}>{beatText(beat, nameOf, roleOf)}</li>
@@ -219,9 +232,6 @@ function DawnPanel({ session, game, nameOf }: { session: RoomSession; game: Game
         </ul>
       )}
 
-      <p className="summary">
-        {dawn.deaths.length ? lastNightText(dawn.deaths, nameOf) : 'Nobody will die.'}
-      </p>
       {dawn.endsGame && (
         <p className="warning">⚠️ This ends the game: {winnerLabel(dawn.endsGame)}.</p>
       )}
@@ -329,7 +339,7 @@ function headingFor(game: GameState): { title: string; subtext: string } {
       return game.finale
         ? {
             title: 'Tell the ending',
-            subtext: `${winnerLabel(game.finale.winner)}. ${winReason(game.finale.winner)} Reveal the winner when you’re ready.`,
+            subtext: `${winReason(game.finale.winner)} Reveal the winner when you’re ready.`,
           }
         : { title: 'Tell the ending', subtext: '' }
     default:

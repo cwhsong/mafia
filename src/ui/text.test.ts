@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { PlayerView } from '../engine'
 import {
-  beatText, buildLog, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT, rosterNotes,
+  beatText, buildLog, deathCauseText, gameOverSubtext, joinNames, lastNightText, lastVoteText, messageText, nightSubtext, QUIET_NIGHT, rosterNotes,
 } from './text'
 
 const names: Record<string, string> = { ana: 'Ana', ben: 'Ben', cal: 'Cal', dee: 'Dee', fay: 'Fay' }
@@ -47,6 +47,8 @@ describe('the narrator’s story', () => {
     expect(beatText({ kind: 'protected', medicId: 'cal', targetId: 'fay' }, nameOf, roleOf)).toBe('The Medic (Cal) protected Fay.')
     expect(beatText({ kind: 'saved', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was saved.')
     expect(beatText({ kind: 'killed', targetId: 'fay' }, nameOf, roleOf)).toBe('Fay was killed.')
+    expect(beatText({ kind: 'killed', targetId: 'fay', cause: { kind: 'mafia', byId: 'ana' } }, nameOf, roleOf)).toBe('Fay was killed by the Mafia.')
+    expect(beatText({ kind: 'saved', targetId: 'fay', cause: { kind: 'veteran', byId: 'cal' } }, nameOf, roleOf)).toBe('Fay was shot by the Medic (Cal) after visiting them, but saved.')
     expect(beatText({ kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' }, nameOf, roleOf))
       .toBe('The Detective (Dee) investigated Ben: suspicious.')
     expect(beatText({ kind: 'suspects', playerId: 'fay', targetId: 'ana' }, nameOf, roleOf)).toBe('Fay suspects Ana.')
@@ -137,5 +139,15 @@ describe('at the table', () => {
     expect(notes.get('gus')).toEqual([{ text: 'Mafia · Godfather', private: true, tone: 'bad' }])
     expect(notes.get('eve')?.[0]).toMatchObject({ private: true })
     expect(notes.has('ana')).toBe(false)
+  })
+})
+
+describe('narrator deaths', () => {
+  const roleOf = (id: string) => ({ ana: 'Vigilante', cal: 'Veteran', dee: 'Mafioso' })[id] ?? 'Villager'
+  it('says how each player died', () => {
+    expect(deathCauseText('fay', { kind: 'mafia', byId: 'dee' }, nameOf, roleOf)).toBe('Fay, killed by the Mafia')
+    expect(deathCauseText('ben', { kind: 'role', byId: 'ana' }, nameOf, roleOf)).toBe('Ben, shot by the Vigilante (Ana)')
+    expect(deathCauseText('dee', { kind: 'veteran', byId: 'cal' }, nameOf, roleOf)).toBe('Dee, shot by the Veteran (Cal) after visiting them')
+    expect(deathCauseText('dee', undefined, nameOf, roleOf)).toBe('Dee died.')
   })
 })

@@ -90,7 +90,7 @@ describe('resolving the night', () => {
   it('saves the target when the Medic protects them', () => {
     const state = resolve(play(night(), { ana: 'eve', ben: 'eve', cal: 'eve' }))
     expect(state.dawn?.deaths).toEqual([])
-    expect(state.dawn?.beats).toContainEqual({ kind: 'saved', targetId: 'eve' })
+    expect(state.dawn?.beats).toContainEqual(expect.objectContaining({ kind: 'saved', targetId: 'eve', cause: expect.objectContaining({ kind: 'mafia' }) }))
     expect(messagesFor(state, 'cal')).toEqual([{ kind: 'patient-saved', round: 1, targetId: 'eve' }])
     expect(messagesFor(state, 'eve')).toContainEqual({ kind: 'was-saved', round: 1 })
   })
@@ -159,13 +159,19 @@ describe('resolving the night', () => {
     expect(messagesFor(state, 'dee')).toEqual([{ kind: 'no-pick', round: 1, action: 'investigate' }])
   })
 
+  it('records how each player died, for the narrator', () => {
+    const state = resolve(play(night(), { ana: 'eve', ben: 'eve' }))
+    expect(state.dawn?.deaths).toEqual(['eve'])
+    expect(state.dawn?.causes?.eve).toMatchObject({ kind: 'mafia' })
+  })
+
   it('writes the story for the narrator, including suspicions', () => {
     const state = resolve(play(night(), { ana: 'eve', ben: 'eve', cal: 'eve', dee: 'ben', fay: 'ana' }))
     expect(state.dawn?.beats).toEqual([
       { kind: 'mafia-targeted', mafiaIds: ['ana', 'ben'], targetId: 'eve', tieBroken: false },
       { kind: 'protected', medicId: 'cal', targetId: 'eve' },
       expect.objectContaining({ kind: 'ability', ability: 'kill', targetIds: ['eve'] }), // the member who went
-      { kind: 'saved', targetId: 'eve' },
+      expect.objectContaining({ kind: 'saved', targetId: 'eve' }),
       { kind: 'investigated', detectiveId: 'dee', targetId: 'ben', result: 'suspicious' },
       { kind: 'no-pick', playerId: 'eve' },
       { kind: 'suspects', playerId: 'fay', targetId: 'ana' },

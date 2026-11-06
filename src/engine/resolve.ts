@@ -3,6 +3,7 @@ import type {
   FakeMessage,
   GameState,
   NightAbility,
+  NightDeathCause,
   NightActionKind,
   Player,
   PrivateResult,
@@ -54,6 +55,7 @@ export interface Night {
   readAs: Map<string, string>                   // player → the role they read as tonight
   attacks: Attack[]
   deaths: string[]
+  causes: Record<string, NightDeathCause>
   saved: Set<string>                            // attacked but survived
   fought: Set<string>                           // Bodyguards who stepped in
   mafia: { killerIds: string[]; targetId: string | null; tieBroken: boolean; shooterId: string | null }
@@ -320,14 +322,17 @@ function stepKill(night: Night) {
 
   const usedGuards = new Set<string>()
   const isProtected = (id: string) => (night.protectors.get(id)?.length ?? 0) > 0
-  const die = (id: string) => {
-    if (!night.deaths.includes(id)) night.deaths.push(id)
+  const die = (id: string, cause: NightDeathCause) => {
+    if (!night.deaths.includes(id)) {
+      night.deaths.push(id)
+      night.causes[id] = cause
+    }
   }
 
   for (const attack of night.attacks) {
     const { targetId, attackerId } = attack
     if (night.deaths.includes(targetId)) continue
-    if (attack.source === 'veteran') beat(night, attackerId, 'veteran-shot', [targetId])
+    const cause: NightDeathCause = { kind: attack.source, byId: attackerId }
 
     if (!attack.unstoppable) {
       // A Bodyguard steps in first
@@ -341,18 +346,18 @@ function stepKill(night: Night) {
         night.saved.add(targetId)
         beat(night, bodyguard, 'intercept', [targetId, attackerId])
         if (isProtected(bodyguard)) night.saved.add(bodyguard)
-        else die(bodyguard)
-        die(attackerId)
+        else die(bodyguard, { kind: 'guarding', byId: targetId })
+        die(attackerId, { kind: 'bodyguard', byId: bodyguard })
         continue
       }
       if (isProtected(targetId)) {
         night.saved.add(targetId)
-        night.beats.push({ kind: 'saved', targetId })
+        night.beats.push({ kind: 'saved', targetId, cause })
         continue
       }
     }
-    die(targetId)
-    night.beats.push({ kind: 'killed', targetId })
+    die(targetId, cause)
+    night.beats.push({ kind: 'killed', targetId, cause })
   }
 
   for (const [vet, shot] of shotBy) tell(night, vet, { kind: 'alerted', round, shotIds: shot })
@@ -444,6 +449,7 @@ function stepAftermath(night: Night) {
   for (const p of night.alive) {
     if (state.guilt?.[p.id] === round && !night.deaths.includes(p.id)) {
       night.deaths.push(p.id)
+      night.causes[p.id] = { kind: 'guilt', byId: null }
       tell(night, p.id, { kind: 'guilt', round })
       beat(night, p.id, 'guilt', [])
     }
@@ -460,6 +466,7 @@ function stepAftermath(night: Night) {
         : null
     if (targetId) {
       night.deaths.push(targetId)
+      night.causes[targetId] = { kind: 'revenge', byId: revenge.playerId }
       tell(night, revenge.playerId, { kind: 'revenge', round, targetId })
       beat(night, revenge.playerId, 'revenge', [targetId])
     }
@@ -573,6 +580,7 @@ export function runNight(state: GameState, actions: Action[], decoys: Record<str
     readAs: new Map(),
     attacks: [],
     deaths: [],
+    causes: {},
     saved: new Set(),
     fought: new Set(),
     mafia: { killerIds: [], targetId: null, tieBroken: false, shooterId: null },

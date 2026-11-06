@@ -497,19 +497,6 @@ export function PlayerGame({ session, state, view }: Props) {
       {faceUp && view.nemesisTarget && (
         <p className="summary">Your target: {nameOf(view.nemesisTarget)}. Get them voted out.</p>
       )}
-      {faceUp && view.teammates.length > 0 && (
-        <div className="panel stack">
-          <p className="section-label team-mafia">Your fellow Mafia</p>
-          <ul className="list">
-            {view.teammates.map((t) => (
-              <li key={t.id}>
-                <span className={t.alive ? '' : 'is-dead'}>{t.name}</span>
-                <span className="team-tag team-mafia">{ROLES[t.roleId]?.name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </section>
   ) : (
     <p className="muted">You’re watching this game.</p>

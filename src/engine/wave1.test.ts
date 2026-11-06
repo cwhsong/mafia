@@ -122,6 +122,7 @@ describe('Veteran', () => {
     const state = night(night1(cast), { vet: 'vet', ana: 'vet', med: 'vet', bea: 'vet' })
     expect(deaths(state).sort()).toEqual(['ana', 'bea', 'med'])
     expect(said(state, 'vet')).toContainEqual({ kind: 'alerted', round: 1, shotIds: expect.arrayContaining(['ana', 'med', 'bea']) })
+    expect(state.dawn?.causes?.med).toEqual({ kind: 'veteran', byId: 'vet' })
   })
 
   it('has two alerts, and staying home is fine', () => {
@@ -190,11 +191,13 @@ describe('Vigilante', () => {
     let state = nextNight(night(night1(cast))) // Night 2
     state = night(state, { vic: 'eve' })
     expect(deaths(state)).toEqual(['eve'])
+    expect(state.dawn?.causes?.eve).toEqual({ kind: 'role', byId: 'vic' })
     state = nextNight(state) // Night 3
     expect(nightChoice(state, 'vic')).toBe('suspect')
     state = night(state)
     expect(deaths(state)).toContain('vic')
     expect(said(state, 'vic')).toContainEqual({ kind: 'guilt', round: 3 })
+    expect(state.dawn?.causes?.vic).toEqual({ kind: 'guilt', byId: null })
   })
 
   it('feels no guilt for killing the Mafia', () => {

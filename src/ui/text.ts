@@ -1,4 +1,4 @@
-import type { FakeMessage, NightChoice, PlayerView, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
+import type { FakeMessage, NightChoice, NightDeathCause, PlayerView, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
 import { ROLES } from '../roles'
 
 const roleName = (id: string) => ROLES[id]?.name ?? id
@@ -258,9 +258,13 @@ export function beatText(beat: StoryBeat, nameOf: NameOf, roleOf: (id: string) =
     case 'protected':
       return `The ${roleOf(beat.medicId)} (${nameOf(beat.medicId)}) protected ${nameOf(beat.targetId)}.`
     case 'saved':
-      return `${nameOf(beat.targetId)} was saved.`
+      return beat.cause
+        ? `${nameOf(beat.targetId)} was ${attackPhrase(beat.cause, false, nameOf, roleOf)}, but saved.`
+        : `${nameOf(beat.targetId)} was saved.`
     case 'killed':
-      return `${nameOf(beat.targetId)} was killed.`
+      return beat.cause
+        ? `${nameOf(beat.targetId)} was ${attackPhrase(beat.cause, true, nameOf, roleOf)}.`
+        : `${nameOf(beat.targetId)} was killed.`
     case 'investigated':
       return `The ${roleOf(beat.detectiveId)} (${nameOf(beat.detectiveId)}) investigated ${nameOf(beat.targetId)}: ${
         beat.result === 'suspicious' ? 'suspicious' : 'not suspicious'
@@ -308,6 +312,37 @@ function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: Name
     case 'guilt': return `${who} died of guilt.`
     case 'revenge': return `${who} took revenge on ${nameOf(t)}.`
     default: return `${who} acted on ${list(beat.targetIds)}.`
+  }
+}
+
+// "shot by the Vigilante (Ana)": what happened to someone who was attacked.
+function attackPhrase(cause: NightDeathCause, died: boolean, nameOf: NameOf, roleOf: (id: string) => string): string {
+  const by = cause.byId ? `the ${roleOf(cause.byId)} (${nameOf(cause.byId)})` : 'someone'
+  switch (cause.kind) {
+    case 'mafia': return `${died ? 'killed' : 'attacked'} by the Mafia`
+    case 'veteran': return `shot by ${by} after visiting them`
+    case 'execute': return `executed by ${by}`
+    case 'role': return `${cause.byId && roleOf(cause.byId) === 'Vigilante' ? 'shot' : died ? 'killed' : 'attacked'} by ${by}`
+    case 'bodyguard': return `fought off by ${by}`
+    case 'guarding': return `killed guarding ${cause.byId ? nameOf(cause.byId) : 'someone'}`
+    case 'guilt': return 'overcome by guilt'
+    case 'revenge': return `taken by ${by}`
+  }
+}
+
+// How each player died, for the narrator at dawn: "Ivy, killed by the Mafia".
+export function deathCauseText(id: string, cause: NightDeathCause | undefined, nameOf: NameOf, roleOf: (id: string) => string): string {
+  if (!cause) return `${nameOf(id)} died.`
+  const by = cause.byId ? `the ${roleOf(cause.byId)} (${nameOf(cause.byId)})` : ''
+  switch (cause.kind) {
+    case 'mafia': return `${nameOf(id)}, killed by the Mafia`
+    case 'veteran': return `${nameOf(id)}, shot by ${by} after visiting them`
+    case 'execute': return `${nameOf(id)}, executed by ${by}`
+    case 'role': return `${nameOf(id)}, ${cause.byId && roleOf(cause.byId) === 'Vigilante' ? 'shot' : 'killed'} by ${by}`
+    case 'bodyguard': return `${nameOf(id)}, killed by ${by} while attacking`
+    case 'guarding': return `${nameOf(id)}, killed guarding ${cause.byId ? nameOf(cause.byId) : 'someone'}`
+    case 'guilt': return `${nameOf(id)}, died of guilt`
+    case 'revenge': return `${nameOf(id)}, taken by ${by}`
   }
 }
 

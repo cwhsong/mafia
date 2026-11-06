@@ -877,3 +877,15 @@ details.tools > summary {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Narrator at dawn: who died, and how */
+.death-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 17px;
+  font-weight: 600;
+}

@@ -191,6 +191,7 @@ export function resolveNight(state: GameState): GameState {
   const dawn: DawnResult = {
     round,
     deaths: night.deaths,
+    causes: night.causes,
     beats: night.beats,
     picks,
     endsGame: checkWin(afterDeaths),

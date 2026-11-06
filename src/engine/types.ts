@@ -109,8 +109,8 @@ export type PrivateResult =
 export type StoryBeat =
   | { kind: 'mafia-targeted'; mafiaIds: string[]; targetId: string | null; tieBroken: boolean }
   | { kind: 'protected'; medicId: string; targetId: string }
-  | { kind: 'saved'; targetId: string }
-  | { kind: 'killed'; targetId: string }
+  | { kind: 'saved'; targetId: string; cause?: NightDeathCause }   // attacked, but survived
+  | { kind: 'killed'; targetId: string; cause?: NightDeathCause }
   | { kind: 'investigated'; detectiveId: string; targetId: string; result: DetectiveResult }
   | { kind: 'suspects'; playerId: string; targetId: string }
   | { kind: 'no-pick'; playerId: string }
@@ -121,10 +121,17 @@ export type BeatAbility =
   | NightActionKind
   | 'execute' | 'veteran-shot' | 'intercept' | 'redirect' | 'guilt' | 'revenge' | 'blocked'
 
+// How someone died (or was attacked), for the narrator. byId is who did it, if anyone.
+export interface NightDeathCause {
+  kind: 'mafia' | 'role' | 'veteran' | 'execute' | 'bodyguard' | 'guarding' | 'guilt' | 'revenge'
+  byId: string | null
+}
+
 // The night's outcome, waiting at dawn for the narrator to reveal it.
 export interface DawnResult {
   round: number
   deaths: string[]
+  causes?: Record<string, NightDeathCause>  // player id → how they died (older saves lack it)
   beats: StoryBeat[]
   picks: Record<string, string>  // every pick, for the narrator's raw view
   endsGame: Team | null          // who would win once these deaths apply
