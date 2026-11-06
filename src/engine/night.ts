@@ -1,7 +1,8 @@
 import type { DawnResult, GameState, NightActionKind, PrivateResult } from './types'
+import { SKIP } from './types'
 import { EngineError, assertNoRevenge, assertPhase } from './errors'
 import { checkWin } from './win'
-import { eliminate } from './eliminate'
+import { eliminate, promotedAfter } from './eliminate'
 import { enterPhase } from './phases'
 import { toFinale } from './finale'
 import { runNight, roleOf, maxUsesFor, type Action } from './resolve'
@@ -95,6 +96,13 @@ export function submitAction(state: GameState, playerId: string, targetId: strin
   const me = player(state, playerId)
   if (!me) throw new EngineError('unknown-player', `No player with id ${playerId}`)
   if (!me.alive && !jesterRevenge(state, playerId)) throw new EngineError('not-alive', `${me.name} is out of the game`)
+  if (targetId === SKIP) {
+    // Anyone with something to do tonight may pass; a Jester's revenge can't be passed
+    if (!me.alive || !nightChoice(state, playerId)) throw new EngineError('invalid-target', `${me.name} can't skip tonight`)
+    const nightOpts = { ...(state.nightOptions ?? {}) }
+    delete nightOpts[playerId]
+    return { ...state, nightPicks: { ...state.nightPicks, [playerId]: SKIP }, nightOptions: nightOpts }
+  }
   if (!eligibleTargets(state, playerId).includes(targetId)) {
     throw new EngineError('invalid-target', `${me.name} can't pick that player tonight`)
   }
@@ -191,9 +199,11 @@ export function resolveNight(state: GameState): GameState {
   const dawn: DawnResult = {
     round,
     deaths: night.deaths,
+    causes: night.causes,
     beats: night.beats,
-    picks,
+    picks: { ...picks, ...Object.fromEntries(alive.filter((p) => state.nightPicks[p.id] === SKIP).map((p) => [p.id, SKIP])) },
     endsGame: checkWin(afterDeaths),
+    promotes: night.deaths.length ? promotedAfter(state.seed, state.players, night.deaths, round) : null,
     roleChanges: night.roleChanges,
   }
 

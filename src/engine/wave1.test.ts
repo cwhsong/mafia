@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Command, GameState, PrivateResult } from './types'
+import { SKIP, type Command, type GameState, type PrivateResult } from './types'
 import { applyCommands, reduce } from './reduce'
 import { eligibleTargets, nightChoice } from './night'
 import { checkWin, winnersOf } from './win'
@@ -122,6 +122,7 @@ describe('Veteran', () => {
     const state = night(night1(cast), { vet: 'vet', ana: 'vet', med: 'vet', bea: 'vet' })
     expect(deaths(state).sort()).toEqual(['ana', 'bea', 'med'])
     expect(said(state, 'vet')).toContainEqual({ kind: 'alerted', round: 1, shotIds: expect.arrayContaining(['ana', 'med', 'bea']) })
+    expect(state.dawn?.causes?.med).toEqual({ kind: 'veteran', byId: 'vet' })
   })
 
   it('has two alerts, and staying home is fine', () => {
@@ -190,11 +191,13 @@ describe('Vigilante', () => {
     let state = nextNight(night(night1(cast))) // Night 2
     state = night(state, { vic: 'eve' })
     expect(deaths(state)).toEqual(['eve'])
+    expect(state.dawn?.causes?.eve).toEqual({ kind: 'role', byId: 'vic' })
     state = nextNight(state) // Night 3
     expect(nightChoice(state, 'vic')).toBe('suspect')
     state = night(state)
     expect(deaths(state)).toContain('vic')
     expect(said(state, 'vic')).toContainEqual({ kind: 'guilt', round: 3 })
+    expect(state.dawn?.causes?.vic).toEqual({ kind: 'guilt', byId: null })
   })
 
   it('feels no guilt for killing the Mafia', () => {
@@ -313,6 +316,68 @@ describe('Survivor and Amnesiac', () => {
   })
 })
 
+// ---------- Skipping a night ----------
+
+describe('skipping tonight', () => {
+  const cast = { mafioso: 'Ana', veteran: 'Vet', medic: 'Med', detective: 'Det', villager: ['Eve', 'Fay', 'Gus'] }
+
+  it("tells the narrator what a distracted or jailed player couldn't do", () => {
+    let state = night1({ mafioso: 'Ana', consort: 'Cora', medic: 'Med', warden: 'War', detective: 'Det', villager: ['Eve', 'Fay'] })
+    state = night(state, { ana: 'eve', cora: 'med', med: 'eve', war: 'det', det: 'ana' })
+    expect(state.dawn?.beats).toContainEqual({ kind: 'ability', actorId: 'cora', ability: 'distract', targetIds: ['med', 'eve'], detail: 'protect' })
+    expect(state.dawn?.beats).toContainEqual({ kind: 'ability', actorId: 'war', ability: 'jail', targetIds: ['det', 'ana'], detail: 'investigate' })
+    expect(state.dawn?.beats).not.toContainEqual({ kind: 'no-pick', playerId: 'ana' })
+  })
+
+  it('counts as a choice, does nothing, and tells the narrator', () => {
+    let state = night1(cast)
+    state = play(state, { vet: SKIP, med: SKIP, ana: 'vet', det: 'vet' })
+    expect(state.nightPicks.vet).toBe(SKIP)
+    state = resolve(state)
+    expect(deaths(state)).toEqual(['vet'])          // no alert: the Detective visits safely, the Mafia kill
+    expect(state.dawn?.picks.med).toBe(SKIP)
+    expect(state.dawn?.beats).toContainEqual({ kind: 'skipped', playerId: 'med' })
+    expect(said(state, 'med')).toContainEqual({ kind: 'skipped', round: 1, action: 'protect' })
+  })
+
+  it("can't be used to pass on a Jester's revenge", () => {
+    let state = applyCommands(night(night1({ jester: 'Jo', mafioso: 'Ana', villager: ['Eve', 'Fay', 'Gus', 'Hal'] })), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'jo', fay: 'jo', gus: 'jo', hal: 'jo' })
+    expectEngineError(() => reduce(state, { type: 'submitAction', playerId: 'jo', targetId: SKIP }), 'invalid-target')
+  })
+})
+
+// ---------- Losing the last killer ----------
+
+describe('the Mafia without a killer', () => {
+  const cast = { mafioso: 'Ana', framer: 'Fra', villager: ['Eve', 'Fay', 'Gus', 'Hal', 'Ivy'] }
+
+  it('makes a member a Mafioso when the last killer is voted out', () => {
+    let state = applyCommands(night(night1(cast)), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'ana', fay: 'ana', gus: 'ana', hal: 'ana' })
+    expect(state.players.find((p) => p.id === 'fra')?.roleId).toBe('mafioso')
+    expect(state.results.fra).toContainEqual(expect.objectContaining({ kind: 'became-mafioso' }))
+    expect(nightChoice(state, 'fra')).toBe('kill')
+    state = night(state, { fra: 'eve' })
+    expect(deaths(state)).toEqual(['eve'])
+  })
+
+  it('tells the narrator at dawn who will become the Mafioso', () => {
+    const state = night(night1({ mafioso: 'Ana', framer: 'Fra', villager: ['Eve', 'Fay', 'Gus', 'Hal'], vigilante: 'Vic' }))
+    expect(state.dawn?.promotes ?? null).toBeNull()
+    const n2 = night(nextNight(state), { vic: 'ana' })
+    expect(n2.dawn?.deaths).toEqual(['ana'])
+    expect(n2.dawn?.promotes).toBe('fra')
+    expect(reduce(n2, { type: 'reveal' }).players.find((p) => p.id === 'fra')?.roleId).toBe('mafioso')
+  })
+
+  it('keeps everyone as they are while a killer is alive', () => {
+    const state = applyCommands(night(night1({ ...cast, godfather: 'Don' })), [{ type: 'reveal' }])
+    const after = vote(state, { eve: 'ana', fay: 'ana', gus: 'ana', hal: 'ana', ivy: 'ana' })
+    expect(after.players.find((p) => p.id === 'fra')?.roleId).toBe('framer')
+  })
+})
+
 // ---------- Jester and Nemesis ----------
 
 describe('Jester', () => {
@@ -327,6 +392,16 @@ describe('Jester', () => {
     expect(eligibleTargets(state, 'jo').sort()).toEqual(['eve', 'fay', 'gus', 'hal'])
     state = night(applyCommands(state, [{ type: 'takeRevenge', playerId: 'jo', targetId: 'fay' }]))
     expect(deaths(state)).toEqual(['fay'])
+  })
+
+  it("strikes first: the voter can't act that night, like being distracted, and only finds out at dawn", () => {
+    let state = applyCommands(night(night1({ jester: 'Jo', mafioso: 'Ana', medic: 'Med', villager: ['Eve', 'Fay', 'Gus'] })), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'jo', fay: 'jo', gus: 'jo', med: 'jo' })
+    state = applyCommands(state, [{ type: 'takeRevenge', playerId: 'jo', targetId: 'med' }])
+    state = night(state, { med: 'eve', ana: 'eve' })
+    expect(deaths(state).sort()).toEqual(['eve', 'med'])   // the Medic never got to protect Eve
+    expect(state.dawn?.beats).toContainEqual(expect.objectContaining({ ability: 'revenge', targetIds: ['med', 'eve'], detail: 'protect' }))
+    expect(said(state, 'med')).not.toContainEqual(expect.objectContaining({ kind: 'distracted' }))
   })
 
   it('takes a random voter if they don’t choose, and is listed among the winners', () => {

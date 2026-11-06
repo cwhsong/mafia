@@ -1,4 +1,4 @@
-import type { FakeMessage, NightChoice, PlayerView, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
+import type { FakeMessage, NightChoice, NightDeathCause, PlayerView, PrivateResult, PublicEntry, StoryBeat, Team } from '../engine'
 import { ROLES } from '../roles'
 
 const roleName = (id: string) => ROLES[id]?.name ?? id
@@ -101,6 +101,8 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
       return result.targetId ? `The Mafia chose ${nameOf(result.targetId)}.` : 'The Mafia didn’t choose anyone.'
     case 'slept':
       return QUIET_NIGHT[(result.round - 1) % QUIET_NIGHT.length]
+    case 'skipped':
+      return result.action === 'alert' || result.action === 'vest' ? 'You stayed home tonight.' : 'You chose not to act tonight.'
     case 'no-pick':
       return result.action === 'protect'
         ? 'You didn’t protect anyone.'
@@ -180,6 +182,8 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
       return 'Overcome with guilt, you take your own life.'
     case 'became-jester':
       return 'Your target died before the town could vote them out. You are now the Jester.'
+    case 'became-mafioso':
+      return 'The family has no killer left. You are now a Mafioso: you pick who to kill.'
   }
 }
 
@@ -250,43 +254,49 @@ export function buildLog(history: PublicEntry[], results: PrivateResult[], nameO
 export function beatText(beat: StoryBeat, nameOf: NameOf, roleOf: (id: string) => string): string {
   switch (beat.kind) {
     case 'mafia-targeted': {
-      const who = beat.mafiaIds.map(nameOf).join(', ')
+      const who = joinNames(beat.mafiaIds.map(nameOf))
       if (!beat.targetId) return `The Mafia (${who}) chose nobody.`
       const tie = beat.tieBroken ? ' Their votes were tied, so it was settled at random.' : ''
       return `The Mafia (${who}) targeted ${nameOf(beat.targetId)}.${tie}`
     }
     case 'protected':
-      return `The ${roleOf(beat.medicId)} (${nameOf(beat.medicId)}) protected ${nameOf(beat.targetId)}.`
+      return `${nameOf(beat.medicId)} (${roleOf(beat.medicId)}) protected ${nameOf(beat.targetId)}.`
     case 'saved':
-      return `${nameOf(beat.targetId)} was saved.`
+      return beat.cause
+        ? `${nameOf(beat.targetId)} was ${attackPhrase(beat.cause, false, nameOf, roleOf)}, but saved.`
+        : `${nameOf(beat.targetId)} was saved.`
     case 'killed':
-      return `${nameOf(beat.targetId)} was killed.`
+      return beat.cause
+        ? `${nameOf(beat.targetId)} was ${attackPhrase(beat.cause, true, nameOf, roleOf)}.`
+        : `${nameOf(beat.targetId)} was killed.`
     case 'investigated':
-      return `The ${roleOf(beat.detectiveId)} (${nameOf(beat.detectiveId)}) investigated ${nameOf(beat.targetId)}: ${
+      return `${nameOf(beat.detectiveId)} (${roleOf(beat.detectiveId)}) investigated ${nameOf(beat.targetId)}: ${
         beat.result === 'suspicious' ? 'suspicious' : 'not suspicious'
       }.`
     case 'suspects':
       return `${nameOf(beat.playerId)} suspects ${nameOf(beat.targetId)}.`
     case 'no-pick':
       return `${nameOf(beat.playerId)} (${roleOf(beat.playerId)}) didn’t choose anyone.`
+    case 'skipped':
+      return `${nameOf(beat.playerId)} (${roleOf(beat.playerId)}) chose to skip tonight.`
     case 'ability':
       return abilityBeat(beat, nameOf, roleOf)
   }
 }
 
 function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: NameOf, roleOf: (id: string) => string): string {
-  const who = `The ${roleOf(beat.actorId)} (${nameOf(beat.actorId)})`
+  const who = `${nameOf(beat.actorId)} (${roleOf(beat.actorId)})`
   const [t, ...rest] = beat.targetIds
   const list = (ids: string[]) => (ids.length > 0 ? joinNames(ids.map(nameOf)) : 'nobody')
   switch (beat.ability) {
-    case 'jail': return `${who} locked up ${nameOf(t)}.`
+    case 'jail': return `${who} locked up ${nameOf(t)}${lostAction(beat, nameOf)}.`
     case 'execute': return `${who} executed ${nameOf(t)}.`
     case 'alert': return `${who} went on alert.`
     case 'veteran-shot': return `${who} shot ${nameOf(t)}, who came to their house.`
     case 'distract':
       if (beat.detail === 'alert') return `${who} tried to distract ${nameOf(t)}, who was on alert.`
       if (beat.detail === 'killer') return `${who} distracted ${nameOf(t)}, who turned on them instead.`
-      return `${who} distracted ${nameOf(t)}.`
+      return `${who} distracted ${nameOf(t)}${lostAction(beat, nameOf)}.`
     case 'guard': return `${who} guarded ${nameOf(t)}.`
     case 'intercept': return `${who} stepped in front of ${nameOf(t)} and fought off ${nameOf(rest[0])}.`
     case 'vest': return `${who} wore a vest.`
@@ -306,8 +316,39 @@ function abilityBeat(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: Name
     case 'hypnotize': return `${who} hypnotized ${nameOf(t)}: “${beat.detail ? FAKE_LABEL[beat.detail as FakeMessage] : ''}.”`
     case 'remember': return `${who} remembered being the ${beat.detail ? roleName(beat.detail) : '?'}.`
     case 'guilt': return `${who} died of guilt.`
-    case 'revenge': return `${who} took revenge on ${nameOf(t)}.`
+    case 'revenge': return `${who} took revenge on ${nameOf(t)}${lostAction(beat, nameOf)}.`
     default: return `${who} acted on ${list(beat.targetIds)}.`
+  }
+}
+
+// "shot by Ana (Vigilante)": what happened to someone who was attacked.
+function attackPhrase(cause: NightDeathCause, died: boolean, nameOf: NameOf, roleOf: (id: string) => string): string {
+  const by = cause.byId ? `${nameOf(cause.byId)} (${roleOf(cause.byId)})` : 'someone'
+  switch (cause.kind) {
+    case 'mafia': return `${died ? 'killed' : 'attacked'} by the Mafia`
+    case 'veteran': return `shot by ${by} after visiting them`
+    case 'execute': return `executed by ${by}`
+    case 'role': return `${cause.byId && roleOf(cause.byId) === 'Vigilante' ? 'shot' : died ? 'killed' : 'attacked'} by ${by}`
+    case 'bodyguard': return `fought off by ${by}`
+    case 'guarding': return `killed guarding ${cause.byId ? nameOf(cause.byId) : 'someone'}`
+    case 'guilt': return 'overcome by guilt'
+    case 'revenge': return `taken by ${by}`
+  }
+}
+
+// How each player died, for the narrator at dawn: "Ivy, killed by the Mafia".
+export function deathCauseText(id: string, cause: NightDeathCause | undefined, nameOf: NameOf, roleOf: (id: string) => string): string {
+  if (!cause) return `${nameOf(id)} died.`
+  const by = cause.byId ? `${nameOf(cause.byId)} (${roleOf(cause.byId)})` : ''
+  switch (cause.kind) {
+    case 'mafia': return `${nameOf(id)}, killed by the Mafia`
+    case 'veteran': return `${nameOf(id)}, shot by ${by} after visiting them`
+    case 'execute': return `${nameOf(id)}, executed by ${by}`
+    case 'role': return `${nameOf(id)}, ${cause.byId && roleOf(cause.byId) === 'Vigilante' ? 'shot' : 'killed'} by ${by}`
+    case 'bodyguard': return `${nameOf(id)}, killed by ${by} while attacking`
+    case 'guarding': return `${nameOf(id)}, killed guarding ${cause.byId ? nameOf(cause.byId) : 'someone'}`
+    case 'guilt': return `${nameOf(id)}, died of guilt`
+    case 'revenge': return `${nameOf(id)}, taken by ${by}`
   }
 }
 
@@ -383,4 +424,81 @@ export function rosterNotes(view: PlayerView): Map<string, RosterNote[]> {
   }
 
   return new Map([...notes].map(([id, m]) => [id, [...m.values()]]))
+}
+
+// ", so Med couldn't protect Eve": what a jailed or distracted player lost.
+function lostAction(beat: Extract<StoryBeat, { kind: 'ability' }>, nameOf: NameOf): string {
+  const [who, target] = beat.targetIds
+  if (!beat.detail || !target) return ''
+  const verb = ACTION_VERB[beat.detail as NightChoice] ?? beat.detail
+  return target === who ? `, so ${nameOf(who)} couldn’t ${verb}` : `, so ${nameOf(who)} couldn’t ${verb} ${nameOf(target)}`
+}
+
+// ---------- The narrator's dawn: one short section per step ----------
+
+export interface DawnSection {
+  title: string
+  lines: string[]
+}
+
+// Which section each story line belongs to: the night's priorities, 0 to 6.
+const SECTION_ORDER = [
+  '0 · Lock-ups', '1 · Unstoppable', '2 · Distractions', '3 · Protection and deception', '4 · Investigations', '5 · Kills', '6 · Late effects', 'Didn’t act',
+] as const
+type SectionTitle = (typeof SECTION_ORDER)[number]
+
+function dawnSectionOf(beat: StoryBeat): SectionTitle | null {
+  switch (beat.kind) {
+    case 'mafia-targeted':
+    case 'saved':
+    case 'killed':
+      return '5 · Kills'
+    case 'protected':
+      return '3 · Protection and deception'
+    case 'investigated':
+      return '4 · Investigations'
+    case 'no-pick':
+    case 'skipped':
+      return 'Didn’t act'
+    case 'suspects':
+      return null // filler for the narrator; still in "Show every pick"
+    case 'ability':
+      switch (beat.ability) {
+        case 'jail': return '0 · Lock-ups'
+        case 'alert': case 'guilt': case 'revenge': return '1 · Unstoppable'
+        case 'distract': return '2 · Distractions'
+        case 'guard': case 'vest': case 'frame': case 'disguise': case 'blackmail': return '3 · Protection and deception'
+        case 'kill': case 'execute': case 'redirect': case 'blocked': case 'intercept': case 'veteran-shot': return '5 · Kills'
+        case 'hypnotize': case 'remember': return '6 · Late effects'
+        default: return '4 · Investigations'
+      }
+  }
+}
+
+// The night as the narrator reads it: only steps where something happened. The Mafia's
+// choice and the member who carried it out read as one line.
+export function dawnSections(beats: StoryBeat[], nameOf: NameOf, roleOf: (id: string) => string): DawnSection[] {
+  const mafia = beats.find((b) => b.kind === 'mafia-targeted')
+  const shooter =
+    mafia?.kind === 'mafia-targeted' && mafia.targetId
+      ? beats.find(
+          (b) => b.kind === 'ability' && b.ability === 'kill' && b.targetIds[0] === mafia.targetId && mafia.mafiaIds.includes(b.actorId),
+        )
+      : undefined
+
+  const lines = new Map<SectionTitle, string[]>()
+  const add = (title: SectionTitle, line: string) => lines.set(title, [...(lines.get(title) ?? []), line])
+
+  for (const beat of beats) {
+    const title = dawnSectionOf(beat)
+    if (!title || beat === shooter) continue
+    if (beat === mafia && shooter?.kind === 'ability' && mafia.kind === 'mafia-targeted') {
+      const who = joinNames(mafia.mafiaIds.map(nameOf))
+      const tie = mafia.tieBroken ? ' (a tie, settled at random)' : ''
+      add(title, `The Mafia (${who}) chose ${nameOf(mafia.targetId)}${tie}; ${nameOf(shooter.actorId)} went.`)
+      continue
+    }
+    add(title, beatText(beat, nameOf, roleOf))
+  }
+  return SECTION_ORDER.filter((t) => lines.has(t)).map((title) => ({ title, lines: lines.get(title)! }))
 }

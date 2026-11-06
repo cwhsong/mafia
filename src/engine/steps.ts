@@ -1,31 +1,29 @@
 import type { NightActionKind } from './types'
 
-// The order a night resolves in. Every night ability belongs to exactly one step,
-// and steps run top to bottom, so (for example) a distraction always lands before
-// the action it cancels, and protection is in place before any kill.
+// The order a night resolves in, by priority (as in Town of Salem): lower numbers act
+// first, and abilities at the same priority land together, so they can't undo each other.
 export const STEPS = [
-  'jail',         // 1. Warden locks someone up; Veteran goes on alert
-  'distract',     // 2. Bartender / Consort cancel actions
-  'swap',         // 3. Ferryman swaps targets (later)
-  'protect',      // 4. Medic, Bodyguard, vests
-  'disguise',     // 5. Framer, Impostor change how someone reads
-  'kill',         // 6. Mafia, Vigilante, Serial Killer, execution, Veteran's shots
-  'investigate',  // 7. Detective and friends read the result of everything above
-  'memory',       // 8. Hypnotist replaces a dawn message
-  'aftermath',    // 9. guilt, revenge, remembering
+  'jail',         // 0. Locked in before the night: the Warden locks someone up
+  'unstoppable',  // 1. Nothing can stop these: Veteran's alert, Vigilante's guilt, Jester's revenge
+  'distract',     // 2. Bartender / Consort cancel actions (Ferryman swaps will go here too)
+  'protect',      // 3. Protection and deception: Medic, Bodyguard, vests, Framer, Impostor, Blackmailer
+  'investigate',  // 4. Detective and friends
+  'kill',         // 5. Mafia, Vigilante, Serial Killer, execution, Veteran's shots
+  'late',         // 6. Late effects: Amnesiac remembers, Hypnotist replaces a dawn message
 ] as const
 
 export type Step = (typeof STEPS)[number]
 
 export const STEP_OF: Record<NightActionKind, Step> = {
   jail: 'jail',
-  alert: 'jail',
+  alert: 'unstoppable',
   distract: 'distract',
   protect: 'protect',
   guard: 'protect',
   vest: 'protect',
-  frame: 'disguise',
-  disguise: 'disguise',
+  frame: 'protect',
+  disguise: 'protect',
+  blackmail: 'protect',
   kill: 'kill',
   investigate: 'investigate',
   shortlist: 'investigate',
@@ -35,9 +33,8 @@ export const STEP_OF: Record<NightActionKind, Step> = {
   spy: 'investigate',
   vision: 'investigate',
   categorize: 'investigate',
-  blackmail: 'investigate',
-  hypnotize: 'memory',
-  remember: 'aftermath',
+  hypnotize: 'late',
+  remember: 'late',
 }
 
 // Abilities that don't send you to anyone's house (a Lookout never sees them).
