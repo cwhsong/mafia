@@ -316,6 +316,28 @@ describe('Survivor and Amnesiac', () => {
   })
 })
 
+// ---------- Losing the last killer ----------
+
+describe('the Mafia without a killer', () => {
+  const cast = { mafioso: 'Ana', framer: 'Fra', villager: ['Eve', 'Fay', 'Gus', 'Hal', 'Ivy'] }
+
+  it('makes a member a Mafioso when the last killer is voted out', () => {
+    let state = applyCommands(night(night1(cast)), [{ type: 'reveal' }])
+    state = vote(state, { eve: 'ana', fay: 'ana', gus: 'ana', hal: 'ana' })
+    expect(state.players.find((p) => p.id === 'fra')?.roleId).toBe('mafioso')
+    expect(state.results.fra).toContainEqual(expect.objectContaining({ kind: 'became-mafioso' }))
+    expect(nightChoice(state, 'fra')).toBe('kill')
+    state = night(state, { fra: 'eve' })
+    expect(deaths(state)).toEqual(['eve'])
+  })
+
+  it('keeps everyone as they are while a killer is alive', () => {
+    const state = applyCommands(night(night1({ ...cast, godfather: 'Don' })), [{ type: 'reveal' }])
+    const after = vote(state, { eve: 'ana', fay: 'ana', gus: 'ana', hal: 'ana', ivy: 'ana' })
+    expect(after.players.find((p) => p.id === 'fra')?.roleId).toBe('framer')
+  })
+})
+
 // ---------- Jester and Nemesis ----------
 
 describe('Jester', () => {

@@ -1,6 +1,8 @@
 import type { DeathCause, GameEvent, GameState, PrivateResult } from './types'
 import { EngineError, assertPhase } from './errors'
 import { checkWin } from './win'
+import { createRng } from './rng'
+import { ROLES } from '../roles'
 
 // Marks one or more players dead at the same moment, then checks for a winner once.
 // Deaths can set off other roles: a Nemesis whose target dies another way becomes a
@@ -80,6 +82,20 @@ function afterDeaths(state: GameState, dead: string[], cause: DeathCause): GameS
         tellPlayer(nemesisId, { kind: 'became-jester', round })
       }
     }
+  }
+
+  // With every Mafia killer gone, a random living member becomes a Mafioso and loses their old ability
+  const isKiller = (roleId: string | null) => {
+    const role = roleId ? ROLES[roleId] : undefined
+    return role?.team === 'mafia' && role.night?.kind === 'kill' && role.night.sharedWithTeam === true
+  }
+  const family = players.filter((p) => p.alive && p.roleId && ROLES[p.roleId]?.team === 'mafia')
+  if (family.length > 0 && !family.some((p) => isKiller(p.roleId))) {
+    let h = state.seed
+    for (const ch of `promote|${round}|${dead.join(',')}`) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0
+    const chosen = family[Math.floor(createRng(h)() * family.length)]
+    players = players.map((p) => (p.id === chosen.id ? { ...p, roleId: 'mafioso' } : p))
+    tellPlayer(chosen.id, { kind: 'became-mafioso', round })
   }
 
   return { ...state, players, neutralWins, results, pendingRevenge }

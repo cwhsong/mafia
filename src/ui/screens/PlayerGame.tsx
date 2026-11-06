@@ -145,12 +145,13 @@ function NightAction({ session, view, nameOf }: { session: RoomSession; view: Pl
     pick.clear()
   }
 
+  const tone = night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined
   const center = pick.pending ? (
-    <TableCenter label={verb.toUpperCase()} name={`${nameOf(pick.pending)}?`} note={suggesting ? `${godfather.name}’s mark is final` : 'not confirmed yet'} tone={night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined} />
+    <TableCenter label={verb.toUpperCase()} name={`${nameOf(pick.pending)}?`} note="not confirmed yet" tone={tone} />
   ) : night.myPick ? (
-    <TableCenter label={suggesting ? 'YOUR PICK' : 'LOCKED IN'} name={nameOf(night.myPick)} note={suggesting ? `${godfather.name}’s mark is final` : verb} tone="dawn" />
+    <TableCenter label={verb.toUpperCase()} name={nameOf(night.myPick)} note="locked in" tone={tone ?? 'dawn'} />
   ) : (
-    <TableCenter label={verb.toUpperCase()} note="Tap someone" tone={night.choice === 'kill' && view.teammates.length ? 'mafia' : undefined} />
+    <TableCenter label={verb.toUpperCase()} note={suggesting ? `${godfather.name}’s mark is final` : 'Tap someone'} tone={tone} />
   )
 
   return (

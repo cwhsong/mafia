@@ -104,6 +104,7 @@ export type PrivateResult =
   | { kind: 'watched-over'; round: number }   // a Hypnotist's fake "protected" message
   | { kind: 'guilt'; round: number }
   | { kind: 'became-jester'; round: number }
+  | { kind: 'became-mafioso'; round: number }
 
 // What happened in the night, for the narrator's story.
 export type StoryBeat =

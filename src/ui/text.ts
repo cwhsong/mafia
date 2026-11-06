@@ -180,6 +180,8 @@ export function messageText(result: PrivateResult, nameOf: NameOf): string {
       return 'Overcome with guilt, you take your own life.'
     case 'became-jester':
       return 'Your target died before the town could vote them out. You are now the Jester.'
+    case 'became-mafioso':
+      return 'The family has no killer left. You are now a Mafioso: you pick who to kill.'
   }
 }
 
