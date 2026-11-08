@@ -21,9 +21,14 @@ function nextNight(state: GameState): GameState {
 }
 
 describe('the night order', () => {
-  it('puts protection before kills, and kills before investigations', () => {
-    expect(STEPS.indexOf(STEP_OF.protect)).toBeLessThan(STEPS.indexOf(STEP_OF.kill))
-    expect(STEPS.indexOf(STEP_OF.kill)).toBeLessThan(STEPS.indexOf(STEP_OF.investigate))
+  it('runs in priority order, 0 to 6', () => {
+    expect(STEPS.indexOf(STEP_OF.jail)).toBeLessThan(STEPS.indexOf(STEP_OF.alert))
+    expect(STEPS.indexOf(STEP_OF.alert)).toBeLessThan(STEPS.indexOf(STEP_OF.distract))
+    expect(STEPS.indexOf(STEP_OF.distract)).toBeLessThan(STEPS.indexOf(STEP_OF.protect))
+    expect(STEPS.indexOf(STEP_OF.protect)).toBe(STEPS.indexOf(STEP_OF.blackmail))
+    expect(STEPS.indexOf(STEP_OF.protect)).toBeLessThan(STEPS.indexOf(STEP_OF.investigate))
+    expect(STEPS.indexOf(STEP_OF.investigate)).toBeLessThan(STEPS.indexOf(STEP_OF.kill))
+    expect(STEPS.indexOf(STEP_OF.kill)).toBeLessThan(STEPS.indexOf(STEP_OF.remember))
   })
 
   it('records where everyone went, and who carried out the Mafia kill', () => {

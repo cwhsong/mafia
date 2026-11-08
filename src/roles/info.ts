@@ -73,16 +73,16 @@ export const TERMS: { term: string; meaning: string }[] = [
   { term: 'Dawn message', meaning: 'The private result each living player gets when the night ends.' },
 ]
 
+// By priority, as in Town of Salem: lower numbers act first, and abilities at the same
+// priority land together.
 export const NIGHT_ORDER = [
-  'Jail and alerts',
-  'Distractions',
-  'Swaps',
-  'Protection',
-  'Disguises',
-  'Kills',
-  'Investigations',
-  'False memories',
-  'Aftermath (guilt, revenge)',
+  '0 · Lock-ups: the Warden locks someone up',
+  '1 · Unstoppable: the Veteran’s alert, the Vigilante’s guilt, the Jester’s revenge',
+  '2 · Distractions: the Bartender and Consort cancel an action',
+  '3 · Protection and deception: Medic, Bodyguard, vests, Framer, Impostor, Blackmailer',
+  '4 · Investigations: Detective, Private Eye, Lookout, Shadow, Coroner, Spy, Psychic, Consigliere',
+  '5 · Kills: the Mafia, Vigilante, Serial Killer, the Warden’s execution, the Veteran’s shots',
+  '6 · Late effects: the Amnesiac remembers, the Hypnotist plants a memory',
 ]
 
 export const ROLE_INFO: RoleInfo[] = [
@@ -177,7 +177,7 @@ export const ROLE_INFO: RoleInfo[] = [
     ability: "Shoot someone. If you kill a Town member, you'll die of guilt the next night.",
     details: [
       "Two bullets a game. Can't shoot on Night 1.",
-      "You can't act on the night you die of guilt.",
+      "You die first thing that night, before anyone acts; protection can't save you.",
       "If your target is protected, there's no death and no guilt.",
     ],
   },
@@ -316,7 +316,7 @@ export const ROLE_INFO: RoleInfo[] = [
     ability: 'Act suspicious on purpose and get yourself voted out.',
     details: [
       "The game continues, and you're included in the win later.",
-      'After being voted out, kill one living player who voted you.',
+      'After being voted out, kill one living player who voted you. It happens first thing that night and can’t be stopped; they don’t get to act.',
     ],
   },
   {

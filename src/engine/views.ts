@@ -1,4 +1,5 @@
 import type { GameState, Phase, PrivateResult, PublicEntry, Team } from './types'
+import { SKIP } from './types'
 import { ROLES } from '../roles'
 import { eligibleTargets, nightChoice, nightOptions, type NightChoice } from './night'
 import { maxUsesFor } from './resolve'
@@ -114,10 +115,10 @@ export function playerView(saved: GameState, playerId: string): PlayerView {
         myOption: state.nightOptions[playerId] ?? null,
         usesLeft: max === undefined ? null : max - (state.uses[playerId] ?? 0),
         teamPicks: teammates
-          .filter((t) => t.alive && isKiller(t.id) && state.nightPicks[t.id])
+          .filter((t) => t.alive && isKiller(t.id) && state.nightPicks[t.id] && state.nightPicks[t.id] !== SKIP)
           .map((t) => ({ playerId: t.id, name: t.name, targetId: state.nightPicks[t.id] })),
         teamActions: teammates
-          .filter((t) => t.alive && !isKiller(t.id) && state.nightPicks[t.id])
+          .filter((t) => t.alive && !isKiller(t.id) && state.nightPicks[t.id] && state.nightPicks[t.id] !== SKIP)
           .map((t) => ({ playerId: t.id, name: t.name, roleId: t.roleId, targetId: state.nightPicks[t.id] })),
       }
     : null

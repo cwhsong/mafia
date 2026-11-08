@@ -58,6 +58,7 @@ export function RolesPage({ openRoleId }: Props) {
           ))}
         </dl>
         <p className="section-label">Night order</p>
+        <p className="hint">Lower numbers act first. Abilities with the same number land together.</p>
         <ol className="night-order">
           {NIGHT_ORDER.map((step) => (
             <li key={step}>{step}</li>
